@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { PIPELINE_STAGES, PRIORITIES } from "@/lib/constants";
 import { LeadFormSheet } from "@/components/lead-form-sheet";
+import { EmailDraftSheet } from "@/components/email-draft-sheet";
 import { format, formatDistanceToNow } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +28,7 @@ function LeadDetail() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [followupDate, setFollowupDate] = useState("");
   const [followupNote, setFollowupNote] = useState("");
@@ -209,9 +211,16 @@ function LeadDetail() {
             </div>
           </div>
         </div>
-        <Button onClick={() => setEditOpen(true)} variant="outline" className="gap-1.5">
-          <Pencil className="size-3.5" /> Edit
-        </Button>
+        <div className="flex gap-2">
+          {lead.email && (
+            <Button onClick={() => setEmailOpen(true)} variant="outline" className="gap-1.5">
+              <Mail className="size-3.5" /> Draft Email
+            </Button>
+          )}
+          <Button onClick={() => setEditOpen(true)} variant="outline" className="gap-1.5">
+            <Pencil className="size-3.5" /> Edit
+          </Button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
@@ -488,6 +497,30 @@ function LeadDetail() {
       </div>
 
       <LeadFormSheet open={editOpen} onOpenChange={setEditOpen} lead={lead as any} />
+
+      {lead.email && (
+        <EmailDraftSheet
+          open={emailOpen}
+          onOpenChange={setEmailOpen}
+          lead={{
+            id: lead.id,
+            full_name: lead.full_name,
+            email: lead.email,
+            stage: stage?.label ?? lead.stage,
+            service: (lead as any).services?.name ?? null,
+            notes: lead.notes ?? null,
+            lastActivity: activities?.[0]?.description ?? null,
+          }}
+          onSent={async () => {
+            await supabase.from("activities").insert({
+              lead_id: id,
+              type: "email",
+              description: `AI-drafted follow-up email prepared for ${lead.email}`,
+            });
+            qc.invalidateQueries({ queryKey: ["activities", id] });
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -85,6 +85,47 @@ Be concise and sales-focused.`,
     );
   });
 
+type DraftEmailInput = {
+  name: string;
+  email: string;
+  stage: string;
+  service?: string | null;
+  notes?: string | null;
+  lastActivity?: string | null;
+};
+
+export const draftFollowUpEmail = createServerFn({ method: "POST" })
+  .inputValidator((d: DraftEmailInput) => d)
+  .handler(async ({ data }) => {
+    const ctx = `Lead name: ${data.name}
+Email: ${data.email}
+Stage: ${data.stage}
+Service interest: ${data.service ?? "Not specified"}
+Notes: ${data.notes || "None"}
+Last activity: ${data.lastActivity ?? "None"}`;
+
+    const raw = await groqChat(
+      `You are a professional B2B sales email writer.
+Write a short, warm follow-up email for this lead.
+Return ONLY valid JSON — no markdown, no explanation:
+{"subject":"subject line max 60 chars","body":"email body text"}
+
+Rules:
+- Use the lead's actual first name in the greeting (extract from full name)
+- Reference their service interest if available
+- 3 short paragraphs max, conversational but professional
+- End with one clear call-to-action (reply, book a call, etc.)
+- Keep body under 130 words
+- Sign off: "Warm regards,\\nThe OneGrasp Team"
+- No placeholder brackets like [Name] or [Company]`,
+      ctx,
+    );
+
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("AI did not return valid JSON");
+    return JSON.parse(match[0]) as { subject: string; body: string };
+  });
+
 type ParseLeadsInput = { text: string };
 
 export const parseLeadsFromText = createServerFn({ method: "POST" })
