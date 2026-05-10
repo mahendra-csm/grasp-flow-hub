@@ -28,14 +28,14 @@ function SettingsPage() {
       <Card className="shadow-soft">
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Database className="size-4 text-primary" /> Backend</CardTitle></CardHeader>
         <CardContent className="text-sm space-y-1">
-          <p className="text-muted-foreground">Powered by Lovable Cloud (PostgreSQL + Storage + Auth).</p>
+          <p className="text-muted-foreground">Powered by Supabase (PostgreSQL + Storage + Auth).</p>
           <p className="text-muted-foreground">All tables are protected by row-level security.</p>
         </CardContent>
       </Card>
       <Card className="shadow-soft">
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Sparkles className="size-4 text-primary" /> AI Assistant</CardTitle></CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          AI-ready architecture. Lead summaries, follow-up suggestions and smart search are scaffolded — wire them to Lovable AI Gateway when ready.
+          AI-ready architecture. Lead summaries, follow-up suggestions and smart search are available when connected to an AI provider.
         </CardContent>
       </Card>
       <Card className="shadow-soft">

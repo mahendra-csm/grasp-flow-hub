@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { ensureAdmin } from "@/lib/admin-setup.functions";
 import { Button } from "@/components/ui/button";
@@ -41,10 +41,11 @@ function LoginPage() {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between p-12 bg-gradient-to-br from-secondary-foreground to-[oklch(0.22_0.04_250)] text-white">
         <div className="flex items-center gap-2">
-          <div className="size-9 rounded-lg bg-primary grid place-items-center">
-            <Sparkles className="size-5 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-semibold">OneGrasp CRM</span>
+          <img
+            src="https://onegrasp.com/wp-content/uploads/2026/05/logo.png"
+            alt="OneGrasp"
+            className="h-9 w-auto object-contain brightness-0 invert"
+          />
         </div>
         <div className="space-y-4 max-w-md">
           <h1 className="text-4xl font-semibold leading-tight">Lead management, built for action.</h1>

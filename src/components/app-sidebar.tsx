@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, KanbanSquare, Briefcase, BarChart3,
-  FileText, Settings, Sparkles, LogOut,
+  FileText, Settings, LogOut,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -32,14 +32,13 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 px-2 py-2">
-          <div className="size-8 shrink-0 rounded-lg bg-primary grid place-items-center">
-            <Sparkles className="size-4 text-primary-foreground" />
-          </div>
+          <img
+            src="https://onegrasp.com/wp-content/uploads/2026/05/logo.png"
+            alt="OneGrasp"
+            className="h-8 w-auto shrink-0 object-contain"
+          />
           {!collapsed && (
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm leading-tight">OneGrasp</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">CRM Admin</span>
-            </div>
+            <span className="text-[10px] text-muted-foreground leading-tight">CRM Admin</span>
           )}
         </div>
       </SidebarHeader>
