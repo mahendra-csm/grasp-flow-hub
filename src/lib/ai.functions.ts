@@ -85,6 +85,28 @@ Be concise and sales-focused.`,
     );
   });
 
+type DraftWhatsAppInput = {
+  name: string;
+  stage: string;
+  service?: string | null;
+  lastActivity?: string | null;
+};
+
+export const draftWhatsAppMessage = createServerFn({ method: "POST" })
+  .inputValidator((d: DraftWhatsAppInput) => d)
+  .handler(async ({ data }) => {
+    const firstName = data.name.split(" ")[0];
+    return groqChat(
+      `You are writing a short, friendly WhatsApp follow-up message on behalf of a sales rep at OneGrasp.
+Rules: casual tone, first-name only, 2 sentences max, end with a simple question or CTA.
+No emojis unless natural. No subject line. No sign-off block. Just the message text.`,
+      `Lead first name: ${firstName}
+Stage: ${data.stage}
+Service: ${data.service ?? "general inquiry"}
+Last contact: ${data.lastActivity ?? "none recorded"}`,
+    );
+  });
+
 type DraftEmailInput = {
   name: string;
   email: string;

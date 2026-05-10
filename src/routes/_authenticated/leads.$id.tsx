@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Pencil, Mail, Phone, MapPin, Calendar, Plus, Upload, Loader2,
-  CheckCircle2, Sparkles, RefreshCw,
+  CheckCircle2, Sparkles, RefreshCw, MessageCircle,
 } from "lucide-react";
 import { PIPELINE_STAGES, PRIORITIES } from "@/lib/constants";
 import { LeadFormSheet } from "@/components/lead-form-sheet";
 import { EmailDraftSheet } from "@/components/email-draft-sheet";
+import { WhatsAppSheet } from "@/components/whatsapp-sheet";
+import { scoreLead } from "@/lib/scoring";
 import { format, formatDistanceToNow } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +31,7 @@ function LeadDetail() {
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
+  const [whatsappOpen, setWhatsappOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [followupDate, setFollowupDate] = useState("");
   const [followupNote, setFollowupNote] = useState("");
@@ -74,6 +77,14 @@ function LeadDetail() {
 
   const stage = PIPELINE_STAGES.find((s) => s.value === lead.stage);
   const prio = PRIORITIES.find((p) => p.value === lead.priority);
+  const score = scoreLead({
+    stage: lead.stage,
+    priority: lead.priority,
+    email: lead.email,
+    phone: lead.phone,
+    whatsapp: lead.whatsapp,
+    lastActivityAt: activities?.[0]?.created_at ?? null,
+  });
 
   const addFollowup = async () => {
     if (!followupDate) return toast.error("Pick a date");
@@ -208,10 +219,16 @@ function LeadDetail() {
               <Badge variant="outline" className={stage?.color}>{stage?.label}</Badge>
               <Badge variant="secondary" className={prio?.color}>{prio?.label}</Badge>
               {(lead as any).services?.name && <Badge variant="outline">{(lead as any).services.name}</Badge>}
+              <Badge variant="outline" className={score.badgeClass}>{score.score}/10 {score.label}</Badge>
             </div>
           </div>
         </div>
         <div className="flex gap-2">
+          {(lead.phone || lead.whatsapp) && (
+            <Button onClick={() => setWhatsappOpen(true)} variant="outline" className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700">
+              <MessageCircle className="size-3.5" /> WhatsApp
+            </Button>
+          )}
           {lead.email && (
             <Button onClick={() => setEmailOpen(true)} variant="outline" className="gap-1.5">
               <Mail className="size-3.5" /> Draft Email
@@ -497,6 +514,29 @@ function LeadDetail() {
       </div>
 
       <LeadFormSheet open={editOpen} onOpenChange={setEditOpen} lead={lead as any} />
+
+      {(lead.phone || lead.whatsapp) && (
+        <WhatsAppSheet
+          open={whatsappOpen}
+          onOpenChange={setWhatsappOpen}
+          lead={{
+            full_name: lead.full_name,
+            phone: lead.phone ?? null,
+            whatsapp: lead.whatsapp ?? null,
+            stage: stage?.label ?? lead.stage,
+            service: (lead as any).services?.name ?? null,
+            lastActivity: activities?.[0]?.description ?? null,
+          }}
+          onSent={async () => {
+            await supabase.from("activities").insert({
+              lead_id: id,
+              type: "whatsapp",
+              description: `WhatsApp message prepared for ${lead.whatsapp || lead.phone}`,
+            });
+            qc.invalidateQueries({ queryKey: ["activities", id] });
+          }}
+        />
+      )}
 
       {lead.email && (
         <EmailDraftSheet

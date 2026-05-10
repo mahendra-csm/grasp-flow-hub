@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Trash2, Pencil, Eye, Download, Upload } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, Eye, Download, Upload, Mic } from "lucide-react";
 import { LeadFormSheet } from "@/components/lead-form-sheet";
 import { LeadImportDialog } from "@/components/lead-import-dialog";
+import { VoiceLeadDialog } from "@/components/voice-lead-dialog";
+import { scoreLead } from "@/lib/scoring";
 import { PIPELINE_STAGES, PRIORITIES } from "@/lib/constants";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -39,6 +41,7 @@ function LeadsPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: services } = useQuery({
@@ -137,6 +140,9 @@ function LeadsPage() {
           <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-1.5">
             <Upload className="size-4" /> Import
           </Button>
+          <Button variant="outline" onClick={() => setVoiceOpen(true)} className="gap-1.5">
+            <Mic className="size-4" /> Voice
+          </Button>
           <Button onClick={() => { setEditing(null); setSheetOpen(true); }} className="gap-1.5">
             <Plus className="size-4" /> New lead
           </Button>
@@ -180,6 +186,7 @@ function LeadsPage() {
                   <TableHead>Service</TableHead>
                   <TableHead>Stage</TableHead>
                   <TableHead>Priority</TableHead>
+                  <TableHead>Score</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -187,11 +194,19 @@ function LeadsPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Loading…</TableCell>
+                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Loading…</TableCell>
                   </TableRow>
                 ) : data?.rows.length ? data.rows.map((l: any) => {
                   const stage = PIPELINE_STAGES.find((s) => s.value === l.stage);
                   const prio = PRIORITIES.find((p) => p.value === l.priority);
+                  const score = scoreLead({
+                    stage: l.stage,
+                    priority: l.priority,
+                    email: l.email,
+                    phone: l.phone,
+                    whatsapp: l.whatsapp,
+                    lastActivityAt: l.updated_at,
+                  });
                   return (
                     <TableRow key={l.id} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
@@ -226,6 +241,11 @@ function LeadsPage() {
                       <TableCell>
                         <Badge variant="secondary" className={prio?.color}>{prio?.label}</Badge>
                       </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={score.badgeClass}>
+                          {score.score}/10 {score.label}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {format(new Date(l.created_at), "MMM d, yyyy")}
                       </TableCell>
@@ -246,7 +266,7 @@ function LeadsPage() {
                   );
                 }) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                       No leads yet.{" "}
                       <button
                         className="text-primary hover:underline"
@@ -273,6 +293,7 @@ function LeadsPage() {
 
       <LeadFormSheet open={sheetOpen} onOpenChange={setSheetOpen} lead={editing} />
       <LeadImportDialog open={importOpen} onOpenChange={setImportOpen} onDone={() => qc.invalidateQueries()} />
+      <VoiceLeadDialog open={voiceOpen} onOpenChange={setVoiceOpen} onDone={() => qc.invalidateQueries()} />
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
