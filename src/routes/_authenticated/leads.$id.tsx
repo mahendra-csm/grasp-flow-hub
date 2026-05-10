@@ -224,11 +224,9 @@ function LeadDetail() {
           </div>
         </div>
         <div className="flex gap-2">
-          {(lead.phone || lead.whatsapp) && (
-            <Button onClick={() => setWhatsappOpen(true)} variant="outline" className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700">
-              <MessageCircle className="size-3.5" /> WhatsApp
-            </Button>
-          )}
+          <Button onClick={() => setWhatsappOpen(true)} variant="outline" className="gap-1.5 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700">
+            <MessageCircle className="size-3.5" /> WhatsApp
+          </Button>
           {lead.email && (
             <Button onClick={() => setEmailOpen(true)} variant="outline" className="gap-1.5">
               <Mail className="size-3.5" /> Draft Email
@@ -515,28 +513,26 @@ function LeadDetail() {
 
       <LeadFormSheet open={editOpen} onOpenChange={setEditOpen} lead={lead as any} />
 
-      {(lead.phone || lead.whatsapp) && (
-        <WhatsAppSheet
-          open={whatsappOpen}
-          onOpenChange={setWhatsappOpen}
-          lead={{
-            full_name: lead.full_name,
-            phone: lead.phone ?? null,
-            whatsapp: lead.whatsapp ?? null,
-            stage: stage?.label ?? lead.stage,
-            service: (lead as any).services?.name ?? null,
-            lastActivity: activities?.[0]?.description ?? null,
-          }}
-          onSent={async () => {
-            await supabase.from("activities").insert({
-              lead_id: id,
-              type: "whatsapp",
-              description: `WhatsApp message prepared for ${lead.whatsapp || lead.phone}`,
-            });
-            qc.invalidateQueries({ queryKey: ["activities", id] });
-          }}
-        />
-      )}
+      <WhatsAppSheet
+        open={whatsappOpen}
+        onOpenChange={setWhatsappOpen}
+        lead={{
+          full_name: lead.full_name,
+          phone: lead.phone ?? null,
+          whatsapp: lead.whatsapp ?? null,
+          stage: stage?.label ?? lead.stage,
+          service: (lead as any).services?.name ?? null,
+          lastActivity: activities?.[0]?.description ?? null,
+        }}
+        onSent={async () => {
+          await supabase.from("activities").insert({
+            lead_id: id,
+            type: "whatsapp",
+            description: `WhatsApp message prepared for ${lead.whatsapp || lead.phone}`,
+          });
+          qc.invalidateQueries({ queryKey: ["activities", id] });
+        }}
+      />
 
       {lead.email && (
         <EmailDraftSheet

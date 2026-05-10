@@ -22,16 +22,18 @@ type ParsedLead = {
 
 type Props = { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => void };
 
-const hasSpeechAPI = typeof window !== "undefined" &&
-  ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
-
 export function VoiceLeadDialog({ open, onOpenChange, onDone }: Props) {
   const [step, setStep] = useState<"record" | "parsing" | "review" | "saving" | "done">("record");
   const [recording, setRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [interimText, setInterimText] = useState("");
   const [lead, setLead] = useState<ParsedLead | null>(null);
+  const [hasSpeechAPI, setHasSpeechAPI] = useState(false);
   const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    setHasSpeechAPI("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  }, []);
 
   const reset = () => {
     setStep("record");
