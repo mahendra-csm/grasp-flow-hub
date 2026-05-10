@@ -7,6 +7,9 @@
     }
   },
   "rewrites": [
+    { "source": "/api/webhook-leads", "destination": "/api/webhook-leads" },
+    { "source": "/api/webhook-google", "destination": "/api/webhook-google" },
+    { "source": "/api/webhook-meta", "destination": "/api/webhook-meta" },
     { "source": "/(.*)", "destination": "/api/ssr" }
   ]
 }

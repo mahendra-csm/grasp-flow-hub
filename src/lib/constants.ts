@@ -28,5 +28,7 @@ export const LEAD_SOURCES = [
   "Email Campaign",
   "Cold Call",
   "Event",
+  "Google Ads",
+  "Meta Ads",
   "Other",
 ] as const;
