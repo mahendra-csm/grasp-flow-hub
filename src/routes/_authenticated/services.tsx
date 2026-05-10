@@ -46,7 +46,7 @@ function ServicesPage() {
             <Card key={s.id} className="shadow-soft">
               <CardContent className="pt-5">
                 <div className="flex items-start justify-between">
-                  <div className="size-10 rounded-lg grid place-items-center" style={{ background: `${s.color}20`, color: s.color }}>
+                  <div className="size-10 rounded-lg grid place-items-center" style={{ background: `${s.color ?? "#ff7a59"}20`, color: s.color ?? "#ff7a59" }}>
                     <Icon className="size-5" />
                   </div>
                   <Switch checked={s.active} onCheckedChange={(v) => toggleActive(s.id, v)} />
