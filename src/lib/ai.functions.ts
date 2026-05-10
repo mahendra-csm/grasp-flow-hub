@@ -85,6 +85,27 @@ Be concise and sales-focused.`,
     );
   });
 
+type ParseLeadsInput = { text: string };
+
+export const parseLeadsFromText = createServerFn({ method: "POST" })
+  .inputValidator((d: ParseLeadsInput) => d)
+  .handler(async ({ data }) => {
+    const truncated = data.text.slice(0, 12000);
+    const raw = await groqChat(
+      `You are a data extraction assistant for a CRM. Extract every lead/contact from the text.
+Return ONLY a valid JSON array — no markdown, no explanation, no code fences.
+Each object must have exactly these keys (use null when missing):
+full_name (string, required — omit objects without a name), email (string|null),
+phone (string|null), whatsapp (string|null), city (string|null), country (string|null),
+source (string|null), notes (string|null)
+Example output: [{"full_name":"Jane Doe","email":"jane@co.com","phone":"+971501234567","whatsapp":null,"city":"Dubai","country":"UAE","source":null,"notes":null}]`,
+      truncated,
+    );
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error("AI could not find structured lead data in this file");
+    return JSON.parse(match[0]) as Array<Record<string, string | null>>;
+  });
+
 type SuggestNextActionInput = {
   name: string;
   stage: string;

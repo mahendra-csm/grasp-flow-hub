@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Trash2, Pencil, Eye, Download } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, Eye, Download, Upload } from "lucide-react";
 import { LeadFormSheet } from "@/components/lead-form-sheet";
+import { LeadImportDialog } from "@/components/lead-import-dialog";
 import { PIPELINE_STAGES, PRIORITIES } from "@/lib/constants";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ function LeadsPage() {
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<any | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: services } = useQuery({
@@ -131,6 +133,9 @@ function LeadsPage() {
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportCSV} className="gap-1.5">
             <Download className="size-4" /> Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => setImportOpen(true)} className="gap-1.5">
+            <Upload className="size-4" /> Import
           </Button>
           <Button onClick={() => { setEditing(null); setSheetOpen(true); }} className="gap-1.5">
             <Plus className="size-4" /> New lead
@@ -267,6 +272,7 @@ function LeadsPage() {
       </Card>
 
       <LeadFormSheet open={sheetOpen} onOpenChange={setSheetOpen} lead={editing} />
+      <LeadImportDialog open={importOpen} onOpenChange={setImportOpen} onDone={() => qc.invalidateQueries()} />
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
