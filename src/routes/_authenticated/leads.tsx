@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Trash2, Pencil, Eye } from "lucide-react";
+import { Plus, Search, Trash2, Pencil, Eye, Download } from "lucide-react";
 import { LeadFormSheet } from "@/components/lead-form-sheet";
 import { PIPELINE_STAGES, PRIORITIES } from "@/lib/constants";
 import { format } from "date-fns";
@@ -19,6 +19,9 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import type { Database } from "@/integrations/supabase/types";
+
+type PipelineStage = Database["public"]["Enums"]["pipeline_stage"];
 
 export const Route = createFileRoute("/_authenticated/leads")({
   component: LeadsPage,
@@ -38,7 +41,8 @@ function LeadsPage() {
 
   const { data: services } = useQuery({
     queryKey: ["services-active"],
-    queryFn: async () => (await supabase.from("services").select("*").eq("active", true).order("sort_order")).data ?? [],
+    queryFn: async () =>
+      (await supabase.from("services").select("*").eq("active", true).order("sort_order")).data ?? [],
   });
 
   const { data, isLoading } = useQuery({
@@ -46,7 +50,7 @@ function LeadsPage() {
     queryFn: async () => {
       let q = supabase.from("leads").select("*, services(name, color)", { count: "exact" });
       if (search) q = q.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
-      if (stageFilter !== "all") q = q.eq("stage", stageFilter as any);
+      if (stageFilter !== "all") q = q.eq("stage", stageFilter as PipelineStage);
       if (serviceFilter !== "all") q = q.eq("service_id", serviceFilter);
       q = q.order("created_at", { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
       const { data, count, error } = await q;
@@ -65,6 +69,58 @@ function LeadsPage() {
     qc.invalidateQueries();
   };
 
+  const quickStageChange = async (leadId: string, newStage: PipelineStage) => {
+    const { error } = await supabase.from("leads").update({ stage: newStage }).eq("id", leadId);
+    if (error) return toast.error(error.message);
+    await supabase.from("activities").insert({
+      lead_id: leadId,
+      type: "stage",
+      description: `Stage changed to ${PIPELINE_STAGES.find((s) => s.value === newStage)?.label}`,
+    });
+    toast.success("Stage updated");
+    qc.invalidateQueries();
+  };
+
+  const exportCSV = async () => {
+    let q = supabase.from("leads").select("*, services(name)");
+    if (search) q = q.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+    if (stageFilter !== "all") q = q.eq("stage", stageFilter as PipelineStage);
+    if (serviceFilter !== "all") q = q.eq("service_id", serviceFilter);
+    q = q.order("created_at", { ascending: false });
+
+    const { data: all, error } = await q;
+    if (error) return toast.error(error.message);
+    if (!all?.length) return toast.error("No leads to export");
+
+    const headers = ["Name", "Email", "Phone", "WhatsApp", "City", "Country", "Service", "Stage", "Priority", "Source", "Created"];
+    const rows = all.map((l: any) => [
+      l.full_name,
+      l.email ?? "",
+      l.phone ?? "",
+      l.whatsapp ?? "",
+      l.city ?? "",
+      l.country ?? "",
+      l.services?.name ?? "",
+      PIPELINE_STAGES.find((s) => s.value === l.stage)?.label ?? l.stage,
+      PRIORITIES.find((p) => p.value === l.priority)?.label ?? l.priority,
+      l.source ?? "",
+      format(new Date(l.created_at), "yyyy-MM-dd"),
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${all.length} leads`);
+  };
+
   return (
     <div className="space-y-4 max-w-7xl mx-auto">
       <div className="flex items-end justify-between flex-wrap gap-3">
@@ -72,9 +128,14 @@ function LeadsPage() {
           <h1 className="text-2xl font-semibold">Leads</h1>
           <p className="text-sm text-muted-foreground">{data?.count ?? 0} total</p>
         </div>
-        <Button onClick={() => { setEditing(null); setSheetOpen(true); }} className="gap-1.5">
-          <Plus className="size-4" /> New lead
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCSV} className="gap-1.5">
+            <Download className="size-4" /> Export CSV
+          </Button>
+          <Button onClick={() => { setEditing(null); setSheetOpen(true); }} className="gap-1.5">
+            <Plus className="size-4" /> New lead
+          </Button>
+        </div>
       </div>
 
       <Card className="shadow-soft">
@@ -82,7 +143,12 @@ function LeadsPage() {
           <div className="flex flex-wrap gap-2">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-              <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search by name, email, phone…" className="pl-8" />
+              <Input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search by name, email, phone…"
+                className="pl-8"
+              />
             </div>
             <Select value={stageFilter} onValueChange={(v) => { setStageFilter(v); setPage(1); }}>
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Stage" /></SelectTrigger>
@@ -115,7 +181,9 @@ function LeadsPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Loading…</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Loading…</TableCell>
+                  </TableRow>
                 ) : data?.rows.length ? data.rows.map((l: any) => {
                   const stage = PIPELINE_STAGES.find((s) => s.value === l.stage);
                   const prio = PRIORITIES.find((p) => p.value === l.priority);
@@ -128,23 +196,61 @@ function LeadsPage() {
                         {l.email && <div>{l.email}</div>}
                         {l.phone && <div>{l.phone}</div>}
                       </TableCell>
-                      <TableCell className="text-sm">{l.services?.name ?? <span className="text-muted-foreground">—</span>}</TableCell>
-                      <TableCell><Badge variant="outline" className={stage?.color}>{stage?.label}</Badge></TableCell>
-                      <TableCell><Badge variant="secondary" className={prio?.color}>{prio?.label}</Badge></TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{format(new Date(l.created_at), "MMM d, yyyy")}</TableCell>
+                      <TableCell className="text-sm">
+                        {l.services?.name ?? <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={l.stage}
+                          onValueChange={(v) => quickStageChange(l.id, v as PipelineStage)}
+                        >
+                          <SelectTrigger className="h-7 text-xs w-[150px] border-0 px-2 focus:ring-0 shadow-none">
+                            <Badge variant="outline" className={`${stage?.color} pointer-events-none`}>
+                              {stage?.label}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PIPELINE_STAGES.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                <Badge variant="outline" className={s.color}>{s.label}</Badge>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={prio?.color}>{prio?.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {format(new Date(l.created_at), "MMM d, yyyy")}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button asChild variant="ghost" size="icon" className="size-8"><Link to="/leads/$id" params={{ id: l.id }}><Eye className="size-3.5" /></Link></Button>
-                          <Button variant="ghost" size="icon" className="size-8" onClick={() => { setEditing(l); setSheetOpen(true); }}><Pencil className="size-3.5" /></Button>
-                          <Button variant="ghost" size="icon" className="size-8 text-destructive" onClick={() => setDeleteId(l.id)}><Trash2 className="size-3.5" /></Button>
+                          <Button asChild variant="ghost" size="icon" className="size-8">
+                            <Link to="/leads/$id" params={{ id: l.id }}><Eye className="size-3.5" /></Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="size-8" onClick={() => { setEditing(l); setSheetOpen(true); }}>
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="size-8 text-destructive" onClick={() => setDeleteId(l.id)}>
+                            <Trash2 className="size-3.5" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   );
                 }) : (
-                  <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    No leads yet. <button className="text-primary hover:underline" onClick={() => { setEditing(null); setSheetOpen(true); }}>Add the first one</button>.
-                  </TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                      No leads yet.{" "}
+                      <button
+                        className="text-primary hover:underline"
+                        onClick={() => { setEditing(null); setSheetOpen(true); }}
+                      >
+                        Add the first one
+                      </button>.
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
@@ -165,11 +271,18 @@ function LeadsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this lead?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone. All related activities, follow-ups and documents will be removed.</AlertDialogDescription>
+            <AlertDialogDescription>
+              This action cannot be undone. All related activities, follow-ups and documents will be removed.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
