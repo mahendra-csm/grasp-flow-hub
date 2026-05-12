@@ -33,7 +33,7 @@ BEGIN
     v_key := 'ogk_live_'
           || replace(p_user_id::text, '-', '')
           || '_'
-          || encode(gen_random_bytes(18), 'hex');
+          || replace(gen_random_uuid()::text, '-', '');
     INSERT INTO webhook_keys (user_id, api_key)
       VALUES (p_user_id, v_key)
       ON CONFLICT (user_id) DO UPDATE SET api_key = v_key, created_at = now();
