@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.webhook_keys (
 ALTER TABLE public.webhook_keys ENABLE ROW LEVEL SECURITY;
 
 -- Authenticated users can still read/delete their own rows from the client if needed
+DROP POLICY IF EXISTS "own key" ON public.webhook_keys;
 CREATE POLICY "own key" ON public.webhook_keys
   FOR ALL TO authenticated
   USING  (auth.uid() = user_id)
