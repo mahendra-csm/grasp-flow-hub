@@ -1,36 +1,47 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { createClient } from "@supabase/supabase-js";
 
 type UserIdInput = { userId: string };
+
+function getSupabase() {
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  return createClient(url, key, {
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
+}
 
 export const generateWebhookKey = createServerFn({ method: "POST" })
   .inputValidator((d: UserIdInput) => d)
   .handler(async ({ data }) => {
-    const clean = data.userId.replace(/-/g, "");
-    const rand = Array.from(crypto.getRandomValues(new Uint8Array(18)))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    const key = `ogk_live_${clean}_${rand}`;
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
-      user_metadata: { webhook_api_key: key },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: key, error } = await getSupabase().rpc("manage_webhook_key" as any, {
+      p_user_id: data.userId,
+      p_action: "generate",
     });
     if (error) throw new Error(error.message);
-    return { key };
+    return { key: key as string };
   });
 
 export const getWebhookKey = createServerFn({ method: "POST" })
   .inputValidator((d: UserIdInput) => d)
   .handler(async ({ data }) => {
-    const { data: user, error } = await supabaseAdmin.auth.admin.getUserById(data.userId);
-    if (error || !user.user) return { key: null as string | null };
-    return { key: (user.user.user_metadata?.webhook_api_key as string) ?? null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: key } = await getSupabase().rpc("manage_webhook_key" as any, {
+      p_user_id: data.userId,
+      p_action: "get",
+    });
+    return { key: (key as string | null) ?? null };
   });
 
 export const revokeWebhookKey = createServerFn({ method: "POST" })
   .inputValidator((d: UserIdInput) => d)
   .handler(async ({ data }) => {
-    await supabaseAdmin.auth.admin.updateUserById(data.userId, {
-      user_metadata: { webhook_api_key: null },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await getSupabase().rpc("manage_webhook_key" as any, {
+      p_user_id: data.userId,
+      p_action: "revoke",
     });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
