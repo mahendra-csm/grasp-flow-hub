@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, KanbanSquare, Briefcase, BarChart3,
-  FileText, Settings, LogOut,
+  FileText, Settings, LogOut, LayoutTemplate,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -18,6 +18,7 @@ const items = [
   { title: "Services", url: "/services", icon: Briefcase },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Documents", url: "/documents", icon: FileText },
+  { title: "Templates", url: "/templates", icon: LayoutTemplate },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
