@@ -1,4 +1,13 @@
 // Server-side Supabase client with service role key - bypasses RLS.
+// Load local .env into process.env when running in development so service role key is available
+// (helps when running `npm run dev` locally).
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const dotenv = require('dotenv');
+  dotenv.config();
+} catch (e) {
+  /* ignore if dotenv isn't available in production */
+}
 // Use this for admin operations in server functions and server routes only.
 // For user-authenticated queries (with RLS), use the auth middleware instead.
 import { createClient } from '@supabase/supabase-js';

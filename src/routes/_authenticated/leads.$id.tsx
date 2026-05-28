@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Pencil, Mail, Phone, MapPin, Calendar, Plus, Upload, Loader2,
-  CheckCircle2, Sparkles, RefreshCw, MessageCircle,
+  CheckCircle2, Sparkles, RefreshCw, MessageCircle, Download,
 } from "lucide-react";
 import { PIPELINE_STAGES, PRIORITIES } from "@/lib/constants";
 import { LeadFormSheet } from "@/components/lead-form-sheet";
@@ -159,6 +159,61 @@ function LeadDetail() {
     a.click();
   };
 
+  const exportActivityCSV = () => {
+    if (!lead) return;
+    const acts = activities ?? [];
+    const fus = followups ?? [];
+    if (!acts.length && !fus.length) {
+      toast.error("Nothing to export yet");
+      return;
+    }
+
+    const rows: Array<[string, string, string, string]> = [
+      ["Timestamp", "Type", "Description", "Status"],
+    ];
+
+    acts.forEach((a) => {
+      rows.push([
+        format(new Date(a.created_at), "yyyy-MM-dd HH:mm"),
+        a.type,
+        a.description ?? "",
+        "",
+      ]);
+    });
+
+    fus.forEach((f) => {
+      const status = f.status === "pending" && new Date(f.due_date) < new Date()
+        ? "overdue"
+        : f.status;
+      rows.push([
+        format(new Date(f.due_date), "yyyy-MM-dd HH:mm"),
+        "followup",
+        f.notes ?? "Follow-up",
+        status,
+      ]);
+    });
+
+    rows.sort((a, b) => {
+      if (a[0] === "Timestamp") return -1;
+      if (b[0] === "Timestamp") return 1;
+      return b[0].localeCompare(a[0]);
+    });
+
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const safeName = lead.full_name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${safeName}-activity-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${acts.length + fus.length} entries`);
+  };
+
   const handleSummarize = async () => {
     setAiLoadingSummary(true);
     setAiSummary(null);
@@ -286,6 +341,14 @@ function LeadDetail() {
 
             {/* ACTIVITY TAB */}
             <TabsContent value="activity" className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {(activities?.length ?? 0) + (followups?.length ?? 0)} entries on record
+                </p>
+                <Button variant="outline" size="sm" onClick={exportActivityCSV} className="gap-1.5">
+                  <Download className="size-3.5" /> Export CSV
+                </Button>
+              </div>
               <Card className="shadow-soft">
                 <CardContent className="pt-4 space-y-2">
                   <Textarea

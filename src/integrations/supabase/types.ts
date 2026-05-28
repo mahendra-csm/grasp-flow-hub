@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      conferences: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string | null
+          start_date: string | null
+          title: string
+          updated_at: string
+          venue: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string | null
+          start_date?: string | null
+          title: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string | null
+          start_date?: string | null
+          title?: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
+      conference_checklist_items: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          conference_id: string
+          created_at: string
+          description: string
+          id: string
+          phase: "pre" | "during" | "post"
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          conference_id: string
+          created_at?: string
+          description?: string
+          id?: string
+          phase: "pre" | "during" | "post"
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          conference_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          phase?: "pre" | "during" | "post"
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conference_checklist_items_conference_id_fkey"
+            columns: ["conference_id"]
+            isOneToOne: false
+            referencedRelation: "conferences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activities: {
         Row: {
           created_at: string
@@ -314,6 +397,7 @@ export type Database = {
         | "checkbox"
       followup_status: "pending" | "completed" | "overdue" | "cancelled"
       lead_priority: "low" | "medium" | "high" | "urgent"
+      conference_phase: "pre" | "during" | "post"
       pipeline_stage:
         | "new"
         | "contacted"

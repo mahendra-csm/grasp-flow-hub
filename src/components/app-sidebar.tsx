@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, KanbanSquare, Briefcase, BarChart3,
-  FileText, Settings, LogOut, LayoutTemplate,
+  FileText, Settings, LogOut, LayoutTemplate, CalendarDays,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Leads", url: "/leads", icon: Users },
+  { title: "Conferences", url: "/conferences", icon: CalendarDays },
   { title: "Pipeline", url: "/pipeline", icon: KanbanSquare },
   { title: "Services", url: "/services", icon: Briefcase },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
@@ -71,7 +72,6 @@ export function AppSidebar() {
             <>
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="text-xs font-medium truncate">{user?.email}</span>
-                <span className="text-[10px] text-muted-foreground">Admin</span>
               </div>
               <Button size="icon" variant="ghost" onClick={() => signOut()} className="size-7">
                 <LogOut className="size-3.5" />

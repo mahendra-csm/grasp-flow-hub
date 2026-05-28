@@ -33,6 +33,12 @@ async function groqChat(system: string, user: string): Promise<string> {
   return json.choices[0].message.content;
 }
 
+function extractJson<T>(raw: string): T {
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("AI did not return valid JSON");
+  return JSON.parse(match[0]) as T;
+}
+
 type AskAIInput = { message: string };
 
 export const askAI = createServerFn({ method: "POST" })
@@ -167,6 +173,82 @@ Example output: [{"full_name":"Jane Doe","email":"jane@co.com","phone":"+9715012
     const match = raw.match(/\[[\s\S]*\]/);
     if (!match) throw new Error("AI could not find structured lead data in this file");
     return JSON.parse(match[0]) as Array<Record<string, string | null>>;
+  });
+
+export type DashboardLeadContext = {
+  id: string;
+  name: string;
+  stage: string;
+  priority: string;
+  service: string | null;
+  source: string | null;
+  score: number;
+  updatedAt: string;
+  followUpDate: string | null;
+  notes: string | null;
+};
+
+export type DashboardRecommendationsInput = {
+  totalLeads: number;
+  activeLeads: number;
+  converted: number;
+  pendingFollowups: number;
+  overdueFollowups: number;
+  serviceData: Array<{ name: string; value: number }>;
+  stageData: Array<{ stage: string; count: number }>;
+  topLeads: DashboardLeadContext[];
+};
+
+export type DashboardRecommendations = {
+  headline: string;
+  summary: string;
+  focusAreas: string[];
+  nextActions: Array<{
+    title: string;
+    reason: string;
+    timing: string;
+    priority: "high" | "medium" | "low";
+    lead?: string | null;
+  }>;
+  risks: string[];
+};
+
+export const getDashboardRecommendations = createServerFn({ method: "POST" })
+  .inputValidator((d: DashboardRecommendationsInput) => d)
+  .handler(async ({ data }) => {
+    const ctx = `CRM Snapshot\n\nKey metrics:\n- Total leads: ${data.totalLeads}\n- Active leads: ${data.activeLeads}\n- Converted leads: ${data.converted}\n- Pending follow-ups: ${data.pendingFollowups}\n- Overdue follow-ups: ${data.overdueFollowups}\n\nLeads by stage:\n${data.stageData.length ? data.stageData.map((s) => `- ${s.stage}: ${s.count}`).join("\n") : "- No stage data"}\n\nLeads by service:\n${data.serviceData.length ? data.serviceData.map((s) => `- ${s.name}: ${s.value}`).join("\n") : "- No service data"}\n\nTop lead signals (sorted by urgency/score):\n${data.topLeads.length ? data.topLeads.map((lead) => `- ${lead.name} | stage: ${lead.stage} | priority: ${lead.priority} | service: ${lead.service ?? "Unassigned"} | score: ${lead.score}/10 | follow-up: ${lead.followUpDate ?? "none"} | updated: ${lead.updatedAt}`).join("\n") : "- No leads available"}`;
+
+    const raw = await groqChat(
+      `You are an AI sales strategist for a CRM dashboard.
+Analyze the snapshot and give practical direction to the sales team.
+
+Return ONLY valid JSON in this exact shape:
+{
+  "headline": "one short sentence",
+  "summary": "2-4 sentence summary of what the team should focus on",
+  "focusAreas": ["short focus area", "short focus area", "short focus area"],
+  "nextActions": [
+    {"title":"action title","reason":"why it matters","timing":"when to do it","priority":"high|medium|low","lead":"optional lead name or null"}
+  ],
+  "risks": ["risk or bottleneck", "risk or bottleneck"]
+}
+
+Rules:
+- Keep the recommendations specific to the data.
+- Prefer 3 focus areas and 3 next actions.
+- Call out overdue follow-ups, stage bottlenecks, or service concentration when relevant.
+- Be concise, direct, and operational.
+- If the data is sparse, recommend the most important next actions to improve pipeline hygiene.`,
+      ctx,
+    );
+
+    const result = extractJson<DashboardRecommendations>(raw);
+    return {
+      ...result,
+      focusAreas: result.focusAreas.slice(0, 3),
+      nextActions: result.nextActions.slice(0, 3),
+      risks: result.risks.slice(0, 3),
+    };
   });
 
 type SuggestNextActionInput = {

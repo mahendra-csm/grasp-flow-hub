@@ -8,9 +8,11 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   Sparkles, Database, Shield, LogOut, Link2, Copy, Check,
   RefreshCw, Trash2, Globe, ChevronDown, ChevronRight,
+  Sun, Moon, Monitor,
 } from "lucide-react";
 import { toast } from "sonner";
 import { generateWebhookKey, getWebhookKey, revokeWebhookKey } from "@/lib/integrations.functions";
+import { useTheme } from "@/hooks/use-theme";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -68,8 +70,15 @@ function Collapsible({ title, children }: { title: string; children: React.React
 function SettingsPage() {
   const { user, signOut } = useAuth();
   const qc = useQueryClient();
+  const { theme, setTheme } = useTheme();
   const [generating, setGenerating] = useState(false);
   const [revoking, setRevoking] = useState(false);
+
+  const themeOptions = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor },
+  ] as const;
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://your-crm.vercel.app";
 
@@ -157,12 +166,47 @@ async function submitToOneGraspCRM(formData) {
         <p className="text-sm text-muted-foreground">Workspace, account, and integrations.</p>
       </div>
 
+      {/* Appearance */}
+      <Card className="shadow-soft">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sun className="size-4 text-primary" /> Appearance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Choose how the CRM looks. "System" follows your operating system setting.
+          </p>
+          <div className="inline-flex rounded-md border bg-muted/40 p-1 gap-1">
+            {themeOptions.map((opt) => {
+              const active = theme === opt.value;
+              const Icon = opt.icon;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setTheme(opt.value)}
+                  className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition ${
+                    active
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  aria-pressed={active}
+                >
+                  <Icon className="size-3.5" />
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Account */}
       <Card className="shadow-soft">
         <CardHeader><CardTitle className="text-base">Account</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           <Row label="Email" value={user?.email ?? ""} />
-          <Row label="Role" value="Admin" />
           <Row label="User ID" value={user?.id ?? ""} mono />
           <div className="pt-3">
             <Button variant="outline" onClick={() => signOut()} className="gap-1.5">

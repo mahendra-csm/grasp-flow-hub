@@ -9,9 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedServicesRouteImport } from './routes/_authenticated/services'
@@ -19,10 +21,17 @@ import { Route as AuthenticatedPipelineRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedConferencesRouteImport } from './routes/_authenticated/conferences'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authenticated/leads.index'
+import { Route as AuthenticatedConferencesIndexRouteImport } from './routes/_authenticated/conferences.index'
 import { Route as AuthenticatedLeadsIdRouteImport } from './routes/_authenticated/leads.$id'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -36,6 +45,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedTemplatesRoute = AuthenticatedTemplatesRouteImport.update({
   id: '/templates',
@@ -72,6 +86,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedConferencesRoute =
+  AuthenticatedConferencesRouteImport.update({
+    id: '/conferences',
+    path: '/conferences',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAnalyticsRoute = AuthenticatedAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -82,6 +102,12 @@ const AuthenticatedLeadsIndexRoute = AuthenticatedLeadsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedLeadsRoute,
 } as any)
+const AuthenticatedConferencesIndexRoute =
+  AuthenticatedConferencesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedConferencesRoute,
+  } as any)
 const AuthenticatedLeadsIdRoute = AuthenticatedLeadsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -91,7 +117,9 @@ const AuthenticatedLeadsIdRoute = AuthenticatedLeadsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
+  '/conferences': typeof AuthenticatedConferencesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/leads': typeof AuthenticatedLeadsRouteWithChildren
@@ -99,12 +127,15 @@ export interface FileRoutesByFullPath {
   '/services': typeof AuthenticatedServicesRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/templates': typeof AuthenticatedTemplatesRoute
+  '/users': typeof AuthenticatedUsersRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
+  '/conferences/': typeof AuthenticatedConferencesIndexRoute
   '/leads/': typeof AuthenticatedLeadsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/documents': typeof AuthenticatedDocumentsRoute
@@ -112,7 +143,9 @@ export interface FileRoutesByTo {
   '/services': typeof AuthenticatedServicesRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/templates': typeof AuthenticatedTemplatesRoute
+  '/users': typeof AuthenticatedUsersRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
+  '/conferences': typeof AuthenticatedConferencesIndexRoute
   '/leads': typeof AuthenticatedLeadsIndexRoute
 }
 export interface FileRoutesById {
@@ -120,7 +153,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
   '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
+  '/_authenticated/conferences': typeof AuthenticatedConferencesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRouteWithChildren
@@ -128,7 +163,9 @@ export interface FileRoutesById {
   '/_authenticated/services': typeof AuthenticatedServicesRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
+  '/_authenticated/users': typeof AuthenticatedUsersRoute
   '/_authenticated/leads/$id': typeof AuthenticatedLeadsIdRoute
+  '/_authenticated/conferences/': typeof AuthenticatedConferencesIndexRoute
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
 }
 export interface FileRouteTypes {
@@ -136,7 +173,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/signup'
     | '/analytics'
+    | '/conferences'
     | '/dashboard'
     | '/documents'
     | '/leads'
@@ -144,12 +183,15 @@ export interface FileRouteTypes {
     | '/services'
     | '/settings'
     | '/templates'
+    | '/users'
     | '/leads/$id'
+    | '/conferences/'
     | '/leads/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/signup'
     | '/analytics'
     | '/dashboard'
     | '/documents'
@@ -157,14 +199,18 @@ export interface FileRouteTypes {
     | '/services'
     | '/settings'
     | '/templates'
+    | '/users'
     | '/leads/$id'
+    | '/conferences'
     | '/leads'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
+    | '/signup'
     | '/_authenticated/analytics'
+    | '/_authenticated/conferences'
     | '/_authenticated/dashboard'
     | '/_authenticated/documents'
     | '/_authenticated/leads'
@@ -172,7 +218,9 @@ export interface FileRouteTypes {
     | '/_authenticated/services'
     | '/_authenticated/settings'
     | '/_authenticated/templates'
+    | '/_authenticated/users'
     | '/_authenticated/leads/$id'
+    | '/_authenticated/conferences/'
     | '/_authenticated/leads/'
   fileRoutesById: FileRoutesById
 }
@@ -180,10 +228,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -204,6 +260,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/users': {
+      id: '/_authenticated/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof AuthenticatedUsersRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/templates': {
       id: '/_authenticated/templates'
@@ -254,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/conferences': {
+      id: '/_authenticated/conferences'
+      path: '/conferences'
+      fullPath: '/conferences'
+      preLoaderRoute: typeof AuthenticatedConferencesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/analytics': {
       id: '/_authenticated/analytics'
       path: '/analytics'
@@ -268,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeadsIndexRouteImport
       parentRoute: typeof AuthenticatedLeadsRoute
     }
+    '/_authenticated/conferences/': {
+      id: '/_authenticated/conferences/'
+      path: '/'
+      fullPath: '/conferences/'
+      preLoaderRoute: typeof AuthenticatedConferencesIndexRouteImport
+      parentRoute: typeof AuthenticatedConferencesRoute
+    }
     '/_authenticated/leads/$id': {
       id: '/_authenticated/leads/$id'
       path: '/$id'
@@ -277,6 +354,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AuthenticatedConferencesRouteChildren {
+  AuthenticatedConferencesIndexRoute: typeof AuthenticatedConferencesIndexRoute
+}
+
+const AuthenticatedConferencesRouteChildren: AuthenticatedConferencesRouteChildren =
+  {
+    AuthenticatedConferencesIndexRoute: AuthenticatedConferencesIndexRoute,
+  }
+
+const AuthenticatedConferencesRouteWithChildren =
+  AuthenticatedConferencesRoute._addFileChildren(
+    AuthenticatedConferencesRouteChildren,
+  )
 
 interface AuthenticatedLeadsRouteChildren {
   AuthenticatedLeadsIdRoute: typeof AuthenticatedLeadsIdRoute
@@ -293,6 +384,7 @@ const AuthenticatedLeadsRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
+  AuthenticatedConferencesRoute: typeof AuthenticatedConferencesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRouteWithChildren
@@ -300,10 +392,12 @@ interface AuthenticatedRouteChildren {
   AuthenticatedServicesRoute: typeof AuthenticatedServicesRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
+  AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
+  AuthenticatedConferencesRoute: AuthenticatedConferencesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRouteWithChildren,
@@ -311,6 +405,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedServicesRoute: AuthenticatedServicesRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
+  AuthenticatedUsersRoute: AuthenticatedUsersRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -321,6 +416,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
