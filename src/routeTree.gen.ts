@@ -26,6 +26,7 @@ import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedLeadsIndexRouteImport } from './routes/_authenticated/leads.index'
 import { Route as AuthenticatedConferencesIndexRouteImport } from './routes/_authenticated/conferences.index'
 import { Route as AuthenticatedLeadsIdRouteImport } from './routes/_authenticated/leads.$id'
+import { Route as AuthenticatedConferencesLeadsRouteImport } from './routes/_authenticated/conferences.leads'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -113,6 +114,12 @@ const AuthenticatedLeadsIdRoute = AuthenticatedLeadsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AuthenticatedLeadsRoute,
 } as any)
+const AuthenticatedConferencesLeadsRoute =
+  AuthenticatedConferencesLeadsRouteImport.update({
+    id: '/leads',
+    path: '/leads',
+    getParentRoute: () => AuthenticatedConferencesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/conferences/leads': typeof AuthenticatedConferencesLeadsRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
   '/conferences/': typeof AuthenticatedConferencesIndexRoute
   '/leads/': typeof AuthenticatedLeadsIndexRoute
@@ -144,6 +152,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/conferences/leads': typeof AuthenticatedConferencesLeadsRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
   '/conferences': typeof AuthenticatedConferencesIndexRoute
   '/leads': typeof AuthenticatedLeadsIndexRoute
@@ -164,6 +173,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/conferences/leads': typeof AuthenticatedConferencesLeadsRoute
   '/_authenticated/leads/$id': typeof AuthenticatedLeadsIdRoute
   '/_authenticated/conferences/': typeof AuthenticatedConferencesIndexRoute
   '/_authenticated/leads/': typeof AuthenticatedLeadsIndexRoute
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/templates'
     | '/users'
+    | '/conferences/leads'
     | '/leads/$id'
     | '/conferences/'
     | '/leads/'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/templates'
     | '/users'
+    | '/conferences/leads'
     | '/leads/$id'
     | '/conferences'
     | '/leads'
@@ -219,6 +231,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/templates'
     | '/_authenticated/users'
+    | '/_authenticated/conferences/leads'
     | '/_authenticated/leads/$id'
     | '/_authenticated/conferences/'
     | '/_authenticated/leads/'
@@ -352,15 +365,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLeadsIdRouteImport
       parentRoute: typeof AuthenticatedLeadsRoute
     }
+    '/_authenticated/conferences/leads': {
+      id: '/_authenticated/conferences/leads'
+      path: '/leads'
+      fullPath: '/conferences/leads'
+      preLoaderRoute: typeof AuthenticatedConferencesLeadsRouteImport
+      parentRoute: typeof AuthenticatedConferencesRoute
+    }
   }
 }
 
 interface AuthenticatedConferencesRouteChildren {
+  AuthenticatedConferencesLeadsRoute: typeof AuthenticatedConferencesLeadsRoute
   AuthenticatedConferencesIndexRoute: typeof AuthenticatedConferencesIndexRoute
 }
 
 const AuthenticatedConferencesRouteChildren: AuthenticatedConferencesRouteChildren =
   {
+    AuthenticatedConferencesLeadsRoute: AuthenticatedConferencesLeadsRoute,
     AuthenticatedConferencesIndexRoute: AuthenticatedConferencesIndexRoute,
   }
 
