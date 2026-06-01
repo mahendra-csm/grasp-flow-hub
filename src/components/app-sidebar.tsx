@@ -1,11 +1,28 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, KanbanSquare, Briefcase, BarChart3,
-  FileText, Settings, LogOut, LayoutTemplate, CalendarDays,
+  LayoutDashboard,
+  Users,
+  KanbanSquare,
+  Briefcase,
+  BarChart3,
+  FileText,
+  Settings,
+  LogOut,
+  LayoutTemplate,
+  CalendarDays,
+  ClipboardList,
 } from "lucide-react";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
@@ -15,6 +32,7 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Conferences", url: "/conferences", icon: CalendarDays },
+  { title: "Work Tracker", url: "/work-tracker", icon: ClipboardList },
   { title: "Pipeline", url: "/pipeline", icon: KanbanSquare },
   { title: "Services", url: "/services", icon: Briefcase },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },

@@ -13,6 +13,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedWorkTrackerRouteImport } from './routes/_authenticated/work-tracker'
 import { Route as AuthenticatedUsersRouteImport } from './routes/_authenticated/users'
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -47,6 +48,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedWorkTrackerRoute =
+  AuthenticatedWorkTrackerRouteImport.update({
+    id: '/work-tracker',
+    path: '/work-tracker',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedUsersRoute = AuthenticatedUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -135,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/work-tracker': typeof AuthenticatedWorkTrackerRoute
   '/conferences/leads': typeof AuthenticatedConferencesLeadsRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
   '/conferences/': typeof AuthenticatedConferencesIndexRoute
@@ -152,6 +160,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/users': typeof AuthenticatedUsersRoute
+  '/work-tracker': typeof AuthenticatedWorkTrackerRoute
   '/conferences/leads': typeof AuthenticatedConferencesLeadsRoute
   '/leads/$id': typeof AuthenticatedLeadsIdRoute
   '/conferences': typeof AuthenticatedConferencesIndexRoute
@@ -173,6 +182,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
   '/_authenticated/users': typeof AuthenticatedUsersRoute
+  '/_authenticated/work-tracker': typeof AuthenticatedWorkTrackerRoute
   '/_authenticated/conferences/leads': typeof AuthenticatedConferencesLeadsRoute
   '/_authenticated/leads/$id': typeof AuthenticatedLeadsIdRoute
   '/_authenticated/conferences/': typeof AuthenticatedConferencesIndexRoute
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/templates'
     | '/users'
+    | '/work-tracker'
     | '/conferences/leads'
     | '/leads/$id'
     | '/conferences/'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/templates'
     | '/users'
+    | '/work-tracker'
     | '/conferences/leads'
     | '/leads/$id'
     | '/conferences'
@@ -231,6 +243,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/templates'
     | '/_authenticated/users'
+    | '/_authenticated/work-tracker'
     | '/_authenticated/conferences/leads'
     | '/_authenticated/leads/$id'
     | '/_authenticated/conferences/'
@@ -273,6 +286,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/work-tracker': {
+      id: '/_authenticated/work-tracker'
+      path: '/work-tracker'
+      fullPath: '/work-tracker'
+      preLoaderRoute: typeof AuthenticatedWorkTrackerRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/users': {
       id: '/_authenticated/users'
@@ -415,6 +435,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
   AuthenticatedUsersRoute: typeof AuthenticatedUsersRoute
+  AuthenticatedWorkTrackerRoute: typeof AuthenticatedWorkTrackerRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -428,6 +449,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
   AuthenticatedUsersRoute: AuthenticatedUsersRoute,
+  AuthenticatedWorkTrackerRoute: AuthenticatedWorkTrackerRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

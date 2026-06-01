@@ -21,6 +21,7 @@ import {
   Settings,
   LayoutTemplate,
   CalendarDays,
+  ClipboardList,
   Plus,
   Upload,
   Mic,
@@ -44,12 +45,23 @@ const NAV_ITEMS = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, keywords: "home overview" },
   { label: "Leads", to: "/leads", icon: Users, keywords: "contacts customers" },
   { label: "Conferences", to: "/conferences", icon: CalendarDays, keywords: "events" },
+  {
+    label: "Work Tracker",
+    to: "/work-tracker",
+    icon: ClipboardList,
+    keywords: "daily work excel tracker productivity",
+  },
   { label: "Pipeline", to: "/pipeline", icon: KanbanSquare, keywords: "kanban board stages" },
   { label: "Services", to: "/services", icon: Briefcase, keywords: "offerings products" },
   { label: "Analytics", to: "/analytics", icon: BarChart3, keywords: "reports stats" },
   { label: "Documents", to: "/documents", icon: FileText, keywords: "files" },
   { label: "Templates", to: "/templates", icon: LayoutTemplate, keywords: "email whatsapp" },
-  { label: "Settings", to: "/settings", icon: Settings, keywords: "preferences config integrations" },
+  {
+    label: "Settings",
+    to: "/settings",
+    icon: Settings,
+    keywords: "preferences config integrations",
+  },
 ] as const;
 
 export function CommandPalette() {
