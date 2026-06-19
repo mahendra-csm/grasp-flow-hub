@@ -23,14 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 type DocumentRow = Tables<"documents">;
 
@@ -167,8 +159,8 @@ export function SpreadsheetPreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] w-[96vw] max-w-6xl overflow-hidden p-0">
-        <div className="flex h-full flex-col">
+      <DialogContent className="flex h-[92vh] max-h-[92vh] w-[96vw] max-w-7xl flex-col overflow-hidden p-0">
+        <div className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="border-b px-6 py-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
@@ -193,16 +185,16 @@ export function SpreadsheetPreviewDialog({
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-auto px-6 py-4">
+          <div className="flex min-h-0 flex-1 flex-col px-6 py-4">
             {loading ? (
-              <div className="grid min-h-[420px] place-items-center text-sm text-muted-foreground">
+              <div className="grid min-h-0 flex-1 place-items-center text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Loader2 className="size-4 animate-spin" />
                   Loading spreadsheet preview...
                 </div>
               </div>
             ) : error ? (
-              <div className="grid min-h-[420px] place-items-center">
+              <div className="grid min-h-0 flex-1 place-items-center">
                 <div className="max-w-md space-y-3 rounded-2xl border border-destructive/20 bg-destructive/5 p-5 text-center">
                   <p className="font-medium text-destructive">Preview unavailable</p>
                   <p className="text-sm text-muted-foreground">{error}</p>
@@ -219,7 +211,7 @@ export function SpreadsheetPreviewDialog({
                 </div>
               </div>
             ) : currentSheet ? (
-              <div className="space-y-4">
+              <div className="flex min-h-0 flex-1 flex-col gap-4">
                 <div className="grid gap-3 xl:grid-cols-[220px_1fr_auto_auto]">
                   <div className="space-y-2">
                     <Label htmlFor="spreadsheet-sheet">Sheet</Label>
@@ -292,46 +284,61 @@ export function SpreadsheetPreviewDialog({
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
+                <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                  <table className="w-full min-w-max border-collapse text-sm">
+                    <thead className="sticky top-0 z-10 bg-background shadow-sm">
+                      <tr className="border-b">
+                        <th className="w-14 min-w-14 border-r bg-muted/50 px-3 py-2 text-left text-xs font-semibold text-muted-foreground">
+                          #
+                        </th>
                         {headers.map((header, index) => (
-                          <TableHead key={`${header}-${index}`} className="min-w-[150px]">
+                          <th
+                            key={`${header}-${index}`}
+                            className="min-w-[180px] border-r bg-muted/50 px-3 py-2 text-left text-xs font-semibold text-muted-foreground last:border-r-0"
+                          >
                             {header}
-                          </TableHead>
+                          </th>
                         ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {visibleRows.length ? (
                         visibleRows.map((row, rowIndex) => (
-                          <TableRow key={`${currentSheet.name}-${rowIndex}`}>
+                          <tr
+                            key={`${currentSheet.name}-${rowIndex}`}
+                            className="border-b align-top transition-colors hover:bg-muted/30"
+                          >
+                            <td className="border-r bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                              {useHeaderRow ? rowIndex + 2 : rowIndex + 1}
+                            </td>
                             {headers.map((_, columnIndex) => (
-                              <TableCell key={`${currentSheet.name}-${rowIndex}-${columnIndex}`}>
+                              <td
+                                key={`${currentSheet.name}-${rowIndex}-${columnIndex}`}
+                                className="max-w-[28rem] border-r px-3 py-2 align-top text-xs leading-5 whitespace-pre-wrap break-words last:border-r-0"
+                              >
                                 {row[columnIndex] || (
                                   <span className="text-muted-foreground/50">-</span>
                                 )}
-                              </TableCell>
+                              </td>
                             ))}
-                          </TableRow>
+                          </tr>
                         ))
                       ) : (
-                        <TableRow>
-                          <TableCell
-                            colSpan={Math.max(headers.length, 1)}
+                        <tr>
+                          <td
+                            colSpan={Math.max(headers.length + 1, 1)}
                             className="py-12 text-center text-muted-foreground"
                           >
                             No sheet rows match the current search.
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                        </tr>
                       )}
-                    </TableBody>
-                  </Table>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ) : (
-              <div className="grid min-h-[420px] place-items-center text-sm text-muted-foreground">
+              <div className="grid min-h-0 flex-1 place-items-center text-sm text-muted-foreground">
                 This workbook has no readable rows yet.
               </div>
             )}
