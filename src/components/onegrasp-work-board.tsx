@@ -2,22 +2,38 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow, isBefore, startOfDay, subDays } from "date-fns";
 import {
+  ArrowRight,
   CalendarDays,
   CheckCircle2,
   Clock3,
+  LayoutGrid,
   Pencil,
   Plus,
+  Rows3,
   Save,
   Search,
+  SlidersHorizontal,
+  Sparkles,
   Target,
   Trash2,
   UserSquare2,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,30 +46,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 type OneGraspWorkItem = Tables<"onegrasp_work_items">;
 type OneGraspWorkItemInsert = TablesInsert<"onegrasp_work_items">;
 type TaskStatus = "todo" | "in_progress" | "review" | "done";
 type TaskPriority = "low" | "medium" | "high" | "urgent";
+type ViewMode = "board" | "list";
 
 type TaskFormState = {
   title: string;
@@ -70,30 +71,47 @@ const STATUS_OPTIONS: Array<{
   label: string;
   hint: string;
   boardDescription: string;
+  icon: LucideIcon;
+  laneClass: string;
+  laneHeaderClass: string;
 }> = [
   {
     value: "todo",
     label: "To do",
     hint: "Planned work waiting to start",
-    boardDescription: "Tasks ready for pickup",
+    boardDescription: "Ready to pick up",
+    icon: Target,
+    laneClass: "border-slate-200/70 bg-gradient-to-b from-slate-50/80 via-background to-background",
+    laneHeaderClass: "from-slate-100/90 to-transparent",
   },
   {
     value: "in_progress",
     label: "In progress",
     hint: "Actively being worked on",
     boardDescription: "Current execution",
+    icon: Clock3,
+    laneClass: "border-info/20 bg-gradient-to-b from-info/8 via-background to-background",
+    laneHeaderClass: "from-info/12 to-transparent",
   },
   {
     value: "review",
     label: "Review",
     hint: "Needs checking or confirmation",
-    boardDescription: "Waiting for sign-off",
+    boardDescription: "Awaiting sign-off",
+    icon: Sparkles,
+    laneClass:
+      "border-warning/25 bg-gradient-to-b from-warning/10 via-background to-background",
+    laneHeaderClass: "from-warning/15 to-transparent",
   },
   {
     value: "done",
     label: "Done",
     hint: "Finished items",
-    boardDescription: "Completed work",
+    boardDescription: "Wrapped and delivered",
+    icon: CheckCircle2,
+    laneClass:
+      "border-success/25 bg-gradient-to-b from-success/10 via-background to-background",
+    laneHeaderClass: "from-success/15 to-transparent",
   },
 ];
 
@@ -105,17 +123,17 @@ const PRIORITY_OPTIONS: Array<{ value: TaskPriority; label: string }> = [
 ];
 
 const PRIORITY_BADGE_CLASS: Record<TaskPriority, string> = {
-  low: "bg-muted text-muted-foreground border-border",
-  medium: "bg-info/10 text-info border-info/20",
-  high: "bg-warning/10 text-warning-foreground border-warning/20",
-  urgent: "bg-destructive/10 text-destructive border-destructive/20",
+  low: "border-border bg-muted text-muted-foreground",
+  medium: "border-info/20 bg-info/10 text-info",
+  high: "border-warning/20 bg-warning/10 text-warning-foreground",
+  urgent: "border-destructive/20 bg-destructive/10 text-destructive",
 };
 
 const STATUS_BADGE_CLASS: Record<TaskStatus, string> = {
-  todo: "bg-muted text-muted-foreground border-border",
-  in_progress: "bg-primary/10 text-primary border-primary/20",
-  review: "bg-warning/10 text-warning-foreground border-warning/20",
-  done: "bg-success/10 text-success border-success/20",
+  todo: "border-border bg-muted text-muted-foreground",
+  in_progress: "border-info/20 bg-info/10 text-info",
+  review: "border-warning/20 bg-warning/10 text-warning-foreground",
+  done: "border-success/20 bg-success/10 text-success",
 };
 
 function createEmptyTaskFormState(): TaskFormState {
@@ -144,8 +162,12 @@ function buildTaskFormState(item: OneGraspWorkItem | null): TaskFormState {
   };
 }
 
+function getStatusMeta(status: string) {
+  return STATUS_OPTIONS.find((option) => option.value === status) ?? STATUS_OPTIONS[0];
+}
+
 function getStatusLabel(status: string) {
-  return STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
+  return getStatusMeta(status).label;
 }
 
 function getPriorityLabel(priority: string) {
@@ -157,7 +179,7 @@ function isTaskOverdue(item: OneGraspWorkItem) {
   return isBefore(startOfDay(new Date(item.due_date)), startOfDay(new Date()));
 }
 
-function BoardSummaryCard({
+function HeroMetric({
   title,
   value,
   hint,
@@ -166,52 +188,60 @@ function BoardSummaryCard({
   title: string;
   value: string | number;
   hint: string;
-  icon: typeof CalendarDays;
+  icon: LucideIcon;
 }) {
   return (
-    <Card className="shadow-soft">
-      <CardContent className="pt-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {title}
-            </p>
-            <p className="mt-1.5 text-3xl font-semibold">{value}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-          </div>
-          <div className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-            <Icon className="size-5" />
-          </div>
+    <div className="rounded-2xl border border-white/50 bg-background/85 p-4 shadow-soft backdrop-blur-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {title}
+          </p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
         </div>
-      </CardContent>
-    </Card>
+        <div className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
+          <Icon className="size-5" />
+        </div>
+      </div>
+    </div>
   );
 }
 
 function TaskLane({
-  status,
+  compactCards,
   items,
-  onEdit,
   onDelete,
+  onEdit,
   onStatusChange,
+  status,
 }: {
-  status: TaskStatus;
+  compactCards: boolean;
   items: OneGraspWorkItem[];
-  onEdit: (item: OneGraspWorkItem) => void;
   onDelete: (itemId: string) => void;
+  onEdit: (item: OneGraspWorkItem) => void;
   onStatusChange: (item: OneGraspWorkItem, nextStatus: TaskStatus) => void;
+  status: TaskStatus;
 }) {
-  const statusMeta = STATUS_OPTIONS.find((option) => option.value === status)!;
+  const statusMeta = getStatusMeta(status);
+  const StatusIcon = statusMeta.icon;
 
   return (
-    <Card className="overflow-hidden shadow-soft">
-      <CardHeader className="border-b bg-muted/20 pb-3">
+    <Card className={cn("overflow-hidden shadow-card", statusMeta.laneClass)}>
+      <CardHeader className={cn("border-b bg-gradient-to-r pb-4", statusMeta.laneHeaderClass)}>
         <div className="flex items-center justify-between gap-3">
-          <div className="space-y-1">
-            <CardTitle className="text-base">{statusMeta.label}</CardTitle>
-            <p className="text-xs text-muted-foreground">{statusMeta.boardDescription}</p>
+          <div className="flex items-center gap-3">
+            <div className="grid size-10 place-items-center rounded-2xl bg-background/85 text-foreground shadow-soft">
+              <StatusIcon className="size-4" />
+            </div>
+            <div className="space-y-1">
+              <CardTitle className="text-base">{statusMeta.label}</CardTitle>
+              <p className="text-xs text-muted-foreground">{statusMeta.boardDescription}</p>
+            </div>
           </div>
-          <Badge variant="outline">{items.length}</Badge>
+          <Badge variant="outline" className="rounded-full bg-background/80">
+            {items.length}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3 p-4">
@@ -220,18 +250,29 @@ function TaskLane({
             <div
               key={item.id}
               className={cn(
-                "space-y-3 rounded-xl border bg-card p-4 transition",
+                "rounded-2xl border bg-background/90 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card",
+                compactCards ? "space-y-2 p-3" : "space-y-3 p-4",
                 isTaskOverdue(item) && "border-destructive/30 bg-destructive/5",
               )}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium leading-tight">{item.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {item.description?.trim() ? item.description : "No extra details added yet."}
+                  <p className={cn("font-semibold leading-tight", compactCards && "text-sm")}>
+                    {item.title}
                   </p>
+                  {!compactCards ? (
+                    <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+                      {item.description?.trim() ? item.description : "No extra details yet."}
+                    </p>
+                  ) : null}
                 </div>
-                <Badge className={PRIORITY_BADGE_CLASS[item.priority as TaskPriority]}>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-full font-medium",
+                    PRIORITY_BADGE_CLASS[item.priority as TaskPriority],
+                  )}
+                >
                   {getPriorityLabel(item.priority)}
                 </Badge>
               </div>
@@ -245,27 +286,31 @@ function TaskLane({
                   <Badge
                     variant="outline"
                     className={cn(
-                      "gap-1.5 rounded-full",
+                      "gap-1.5 rounded-full bg-background/80",
                       isTaskOverdue(item) &&
-                        "border-destructive/30 text-destructive bg-destructive/5",
+                        "border-destructive/30 bg-destructive/5 text-destructive",
                     )}
                   >
                     <CalendarDays className="size-3.5" />
                     Due {format(new Date(item.due_date), "MMM d")}
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="rounded-full">
+                  <Badge variant="outline" className="rounded-full bg-background/80">
                     No due date
                   </Badge>
                 )}
               </div>
+
+              {!compactCards && item.assignee_email ? (
+                <p className="text-[11px] text-muted-foreground">{item.assignee_email}</p>
+              ) : null}
 
               <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <Select
                   value={item.status}
                   onValueChange={(value) => onStatusChange(item, value as TaskStatus)}
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className="h-9 rounded-xl bg-background/80">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -282,7 +327,7 @@ function TaskLane({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-8"
+                    className="size-8 rounded-xl"
                     onClick={() => onEdit(item)}
                     aria-label={`Edit ${item.title}`}
                   >
@@ -292,7 +337,7 @@ function TaskLane({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-8 text-destructive"
+                    className="size-8 rounded-xl text-destructive"
                     onClick={() => onDelete(item.id)}
                     aria-label={`Delete ${item.title}`}
                   >
@@ -307,10 +352,133 @@ function TaskLane({
             </div>
           ))
         ) : (
-          <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-            No tasks in {statusMeta.label.toLowerCase()}.
+          <div className="rounded-2xl border border-dashed bg-background/70 px-4 py-10 text-center text-sm text-muted-foreground">
+            No tasks in {statusMeta.label.toLowerCase()} right now.
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TaskListItem({
+  item,
+  onDelete,
+  onEdit,
+  onStatusChange,
+}: {
+  item: OneGraspWorkItem;
+  onDelete: (itemId: string) => void;
+  onEdit: (item: OneGraspWorkItem) => void;
+  onStatusChange: (item: OneGraspWorkItem, nextStatus: TaskStatus) => void;
+}) {
+  const statusMeta = getStatusMeta(item.status);
+  const StatusIcon = statusMeta.icon;
+
+  return (
+    <Card className="overflow-hidden border-primary/10 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card">
+      <CardContent className="space-y-4 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="outline"
+                className={cn("gap-1.5 rounded-full font-medium", STATUS_BADGE_CLASS[item.status])}
+              >
+                <StatusIcon className="size-3.5" />
+                {statusMeta.label}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "rounded-full font-medium",
+                  PRIORITY_BADGE_CLASS[item.priority as TaskPriority],
+                )}
+              >
+                {getPriorityLabel(item.priority)}
+              </Badge>
+              {item.due_date ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "rounded-full",
+                    isTaskOverdue(item) &&
+                      "border-destructive/30 bg-destructive/5 text-destructive",
+                  )}
+                >
+                  Due {format(new Date(item.due_date), "MMM d, yyyy")}
+                </Badge>
+              ) : null}
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold tracking-tight">{item.title}</h3>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                {item.description?.trim() ? item.description : "No extra details added yet."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="gap-1.5" onClick={() => onEdit(item)}>
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => onDelete(item.id)}
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_220px]">
+          <div className="rounded-2xl border bg-muted/30 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Assignee
+            </p>
+            <p className="mt-2 text-sm font-medium">{item.assignee_name}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {item.assignee_email ?? "No assignee email added"}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border bg-muted/30 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Activity
+            </p>
+            <p className="mt-2 text-sm font-medium">
+              Updated {formatDistanceToNow(new Date(item.updated_at), { addSuffix: true })}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Created by {item.created_by_email ?? "Unknown"}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border bg-muted/30 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Move task
+            </p>
+            <Select
+              value={item.status}
+              onValueChange={(value) => onStatusChange(item, value as TaskStatus)}
+            >
+              <SelectTrigger className="mt-2 rounded-xl bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -325,6 +493,10 @@ export function OneGraspWorkBoard() {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("board");
+  const [showCompleted, setShowCompleted] = useState(true);
+  const [compactCards, setCompactCards] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(true);
 
   const { data: tasks = [], isLoading } = useQuery<OneGraspWorkItem[]>({
     queryKey: ["onegrasp-work-items"],
@@ -343,8 +515,10 @@ export function OneGraspWorkBoard() {
 
   const editingTask = editingId ? (tasks.find((task) => task.id === editingId) ?? null) : null;
   const trimmedSearch = search.trim().toLowerCase();
+  const showComposerPanel = composerOpen || editingId !== null || tasks.length === 0;
 
   const filteredTasks = tasks.filter((task) => {
+    if (!showCompleted && task.status === "done") return false;
     if (statusFilter !== "all" && task.status !== statusFilter) return false;
     if (assigneeFilter !== "all" && task.assignee_name !== assigneeFilter) return false;
     if (!trimmedSearch) return true;
@@ -382,12 +556,21 @@ export function OneGraspWorkBoard() {
   const resetForm = () => {
     setEditingId(null);
     setForm(createEmptyTaskFormState());
+    setComposerOpen(false);
   };
 
   const startEditing = (task: OneGraspWorkItem) => {
     setEditingId(task.id);
     setForm(buildTaskFormState(task));
+    setComposerOpen(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setAssigneeFilter("all");
+    setShowCompleted(true);
   };
 
   const saveTask = async () => {
@@ -445,7 +628,9 @@ export function OneGraspWorkBoard() {
       toast.success("Task created.");
     }
 
-    resetForm();
+    setComposerOpen(false);
+    setForm(createEmptyTaskFormState());
+    setEditingId(null);
     await qc.invalidateQueries({ queryKey: ["onegrasp-work-items"] });
   };
 
@@ -494,381 +679,446 @@ export function OneGraspWorkBoard() {
 
   return (
     <section className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <BoardSummaryCard
-          title="All tasks"
-          value={summary.total}
-          hint="Everything currently tracked in OneGrasp Work"
-          icon={Target}
-        />
-        <BoardSummaryCard
-          title="In progress"
-          value={summary.inProgress}
-          hint="Active work being moved right now"
-          icon={Clock3}
-        />
-        <BoardSummaryCard
-          title="Overdue"
-          value={summary.overdue}
-          hint="Tasks whose due date has already passed"
-          icon={CalendarDays}
-        />
-        <BoardSummaryCard
-          title="Done this week"
-          value={summary.doneThisWeek}
-          hint="Completed in the last 7 days"
-          icon={CheckCircle2}
-        />
-      </div>
-
-      <Card className="border-primary/15 bg-gradient-to-br from-primary/5 via-background to-background shadow-soft">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle className="text-base">
-                {editingId ? "Update task" : "Create task"}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Track what needs doing, who owns it, and how far it has moved.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant={editingId ? "secondary" : "outline"}>
-                {editingId ? "Editing existing task" : "New task"}
+      <Card className="relative overflow-hidden border-primary/15 bg-gradient-to-br from-primary/10 via-background to-info/10 shadow-card">
+        <div className="pointer-events-none absolute -right-10 top-0 size-40 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute left-8 top-1/2 size-32 rounded-full bg-info/10 blur-3xl" />
+        <CardContent className="relative grid gap-6 p-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-5">
+            <div className="space-y-3">
+              <Badge className="rounded-full border-primary/20 bg-primary/10 px-3 py-1 text-primary">
+                OneGrasp Work Space
               </Badge>
-              <Badge variant="outline">{user?.email ?? "Authenticated user"}</Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr_0.8fr]">
-            <div className="space-y-2">
-              <Label htmlFor="ogw-title">Task title</Label>
-              <Input
-                id="ogw-title"
-                value={form.title}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, title: event.target.value }))
-                }
-                placeholder="Example: Prepare conference outreach list"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ogw-assignee-name">Assigned to</Label>
-              <Input
-                id="ogw-assignee-name"
-                value={form.assigneeName}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, assigneeName: event.target.value }))
-                }
-                placeholder="Team member name"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ogw-assignee-email">Assignee email</Label>
-              <Input
-                id="ogw-assignee-email"
-                type="email"
-                value={form.assigneeEmail}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, assigneeEmail: event.target.value }))
-                }
-                placeholder="Optional"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={form.status}
-                onValueChange={(value) =>
-                  setForm((current) => ({ ...current, status: value as TaskStatus }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {STATUS_OPTIONS.find((option) => option.value === form.status)?.hint}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Priority</Label>
-              <Select
-                value={form.priority}
-                onValueChange={(value) =>
-                  setForm((current) => ({ ...current, priority: value as TaskPriority }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ogw-due-date">Due date</Label>
-              <Input
-                id="ogw-due-date"
-                type="date"
-                value={form.dueDate}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, dueDate: event.target.value }))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="ogw-description">Task details</Label>
-            <Textarea
-              id="ogw-description"
-              value={form.description}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, description: event.target.value }))
-              }
-              placeholder="Add notes, links, expected output, blockers, or the next action needed."
-              className="min-h-28"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-            <p className="text-xs text-muted-foreground">
-              Tasks are shared across the CRM team so everyone can see ownership and progress.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={resetForm}>
-                {editingId ? "Cancel edit" : "Reset"}
-              </Button>
-              <Button onClick={saveTask} className="gap-1.5">
-                {editingId ? <Save className="size-4" /> : <Plus className="size-4" />}
-                {editingId ? "Save changes" : "Create task"}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-soft">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle className="text-base">Team board</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Search, filter, and move tasks between To do, In progress, Review, and Done.
-              </p>
-            </div>
-            <Badge variant="outline">{filteredTasks.length} matching tasks</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 lg:grid-cols-[1fr_200px_220px]">
-            <div className="space-y-2">
-              <Label htmlFor="ogw-search">Search</Label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="ogw-search"
-                  className="pl-9"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by task, assignee, creator, priority, or status"
-                />
+              <div>
+                <h2 className="text-3xl font-semibold tracking-tight">Plan, assign, move.</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  A cleaner task space for the CRM team. Keep the board focused, switch views when
+                  needed, and use the workspace settings to match how your team likes to work.
+                </p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => setStatusFilter(value as TaskStatus | "all")}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                className="gap-1.5 rounded-xl shadow-soft"
+                onClick={() => {
+                  setComposerOpen(true);
+                  setEditingId(null);
+                }}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Plus className="size-4" />
+                New task
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-1.5 rounded-xl bg-background/80"
+                onClick={() => setViewMode(viewMode === "board" ? "list" : "board")}
+              >
+                {viewMode === "board" ? <Rows3 className="size-4" /> : <LayoutGrid className="size-4" />}
+                {viewMode === "board" ? "Open agenda view" : "Open board view"}
+              </Button>
             </div>
 
-            <div className="space-y-2">
-              <Label>Assignee</Label>
-              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All assignees</SelectItem>
-                  {assigneeOptions.map((assignee) => (
-                    <SelectItem key={assignee} value={assignee}>
-                      {assignee}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border bg-background/80 px-3 py-1.5">
+                Shared with the CRM team
+              </span>
+              <span className="rounded-full border bg-background/80 px-3 py-1.5">
+                Status flow: To do -> In progress -> Review -> Done
+              </span>
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-4">
-            {STATUS_OPTIONS.map((option) => (
-              <TaskLane
-                key={option.value}
-                status={option.value}
-                items={filteredTasks.filter((task) => task.status === option.value)}
-                onEdit={startEditing}
-                onDelete={setDeleteId}
-                onStatusChange={updateTaskStatus}
-              />
-            ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <HeroMetric
+              title="All tasks"
+              value={summary.total}
+              hint="Everything currently tracked"
+              icon={Target}
+            />
+            <HeroMetric
+              title="Active now"
+              value={summary.inProgress}
+              hint="Tasks moving right now"
+              icon={Clock3}
+            />
+            <HeroMetric
+              title="Overdue"
+              value={summary.overdue}
+              hint="Needs attention today"
+              icon={CalendarDays}
+            />
+            <HeroMetric
+              title="Done this week"
+              value={summary.doneThisWeek}
+              hint="Recently completed work"
+              icon={CheckCircle2}
+            />
           </div>
         </CardContent>
       </Card>
 
-      <Card className="shadow-soft">
-        <CardHeader className="pb-3">
-          <div className="space-y-1">
-            <CardTitle className="text-base">Task register</CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Spreadsheet-like list for quick scanning, sorting mentally, and editing tasks.
-            </p>
+      <Card className="overflow-hidden border-primary/10 shadow-soft">
+        <CardHeader className="pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <CardTitle className="text-base">
+                {editingId ? "Edit task" : "Task composer"}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Keep the creation flow simple: title, owner, priority, due date, then details.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {editingId ? (
+                <Badge variant="secondary" className="rounded-full">
+                  Editing existing task
+                </Badge>
+              ) : null}
+              <Button
+                variant={showComposerPanel ? "secondary" : "outline"}
+                className="rounded-xl"
+                onClick={() => setComposerOpen((current) => !current)}
+              >
+                {showComposerPanel ? "Hide composer" : "Open composer"}
+              </Button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[240px]">Task</TableHead>
-                  <TableHead className="min-w-[160px]">Assigned to</TableHead>
-                  <TableHead className="min-w-[110px]">Status</TableHead>
-                  <TableHead className="min-w-[110px]">Priority</TableHead>
-                  <TableHead className="min-w-[120px]">Due</TableHead>
-                  <TableHead className="min-w-[160px]">Created by</TableHead>
-                  <TableHead className="min-w-[120px]">Updated</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
-                      Loading OneGrasp Work tasks...
-                    </TableCell>
-                  </TableRow>
-                ) : filteredTasks.length ? (
-                  filteredTasks.map((task) => (
-                    <TableRow key={task.id} className="align-top">
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="font-medium">{task.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {task.description?.trim() ? task.description : "No extra details"}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="text-sm">{task.assignee_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {task.assignee_email ?? "No email added"}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={STATUS_BADGE_CLASS[task.status as TaskStatus]}>
-                          {getStatusLabel(task.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={PRIORITY_BADGE_CLASS[task.priority as TaskPriority]}>
-                          {getPriorityLabel(task.priority)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {task.due_date ? (
-                          <div className="space-y-1">
-                            <p
-                              className={cn(
-                                "text-sm",
-                                isTaskOverdue(task) && "font-medium text-destructive",
-                              )}
-                            >
-                              {format(new Date(task.due_date), "MMM d, yyyy")}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {isTaskOverdue(task) ? "Overdue" : "On track"}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">No due date</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {task.created_by_email ?? "Unknown"}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(task.updated_at), { addSuffix: true })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            onClick={() => startEditing(task)}
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-destructive"
-                            onClick={() => setDeleteId(task.id)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
-                      No tasks match the current filters yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <CardContent className="pt-0">
+          {showComposerPanel ? (
+            <div className="space-y-4 rounded-3xl border bg-gradient-to-br from-muted/40 via-background to-background p-5">
+              <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr_0.8fr]">
+                <div className="space-y-2">
+                  <Label htmlFor="ogw-title">Task title</Label>
+                  <Input
+                    id="ogw-title"
+                    value={form.title}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, title: event.target.value }))
+                    }
+                    placeholder="Example: Prepare conference outreach list"
+                    className="rounded-xl bg-background"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ogw-assignee-name">Assigned to</Label>
+                  <Input
+                    id="ogw-assignee-name"
+                    value={form.assigneeName}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, assigneeName: event.target.value }))
+                    }
+                    placeholder="Team member name"
+                    className="rounded-xl bg-background"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ogw-assignee-email">Assignee email</Label>
+                  <Input
+                    id="ogw-assignee-email"
+                    type="email"
+                    value={form.assigneeEmail}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, assigneeEmail: event.target.value }))
+                    }
+                    placeholder="Optional"
+                    className="rounded-xl bg-background"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={form.status}
+                    onValueChange={(value) =>
+                      setForm((current) => ({ ...current, status: value as TaskStatus }))
+                    }
+                  >
+                    <SelectTrigger className="rounded-xl bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {getStatusMeta(form.status).hint}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select
+                    value={form.priority}
+                    onValueChange={(value) =>
+                      setForm((current) => ({ ...current, priority: value as TaskPriority }))
+                    }
+                  >
+                    <SelectTrigger className="rounded-xl bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ogw-due-date">Due date</Label>
+                  <Input
+                    id="ogw-due-date"
+                    type="date"
+                    value={form.dueDate}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, dueDate: event.target.value }))
+                    }
+                    className="rounded-xl bg-background"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ogw-description">Task details</Label>
+                <Textarea
+                  id="ogw-description"
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, description: event.target.value }))
+                  }
+                  placeholder="Add notes, links, expected output, blockers, or the next action needed."
+                  className="min-h-28 rounded-2xl bg-background"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+                <p className="text-xs text-muted-foreground">
+                  Tasks stay visible to everyone so ownership and movement remain clear.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" className="rounded-xl" onClick={resetForm}>
+                    {editingId ? "Cancel edit" : "Reset"}
+                  </Button>
+                  <Button className="gap-1.5 rounded-xl" onClick={saveTask}>
+                    {editingId ? <Save className="size-4" /> : <Plus className="size-4" />}
+                    {editingId ? "Save changes" : "Create task"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed bg-muted/20 px-5 py-10 text-center">
+              <p className="text-sm font-medium">The composer is tucked away for a cleaner board.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Open it whenever you want to add or update a task.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <Tabs
+        value={viewMode}
+        onValueChange={(value) => setViewMode(value as ViewMode)}
+        className="space-y-4"
+      >
+        <Card className="overflow-hidden border-primary/10 shadow-soft">
+          <CardContent className="space-y-4 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold">Workspace settings</p>
+                <p className="text-xs text-muted-foreground">
+                  Simplify the view, narrow the board, and make the task space feel like your team.
+                </p>
+              </div>
+              <TabsList className="h-10 rounded-xl border bg-background/80 p-1">
+                <TabsTrigger value="board" className="gap-1.5 rounded-lg">
+                  <LayoutGrid className="size-4" />
+                  Board
+                </TabsTrigger>
+                <TabsTrigger value="list" className="gap-1.5 rounded-lg">
+                  <Rows3 className="size-4" />
+                  Agenda
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div className="grid gap-3 xl:grid-cols-[1fr_190px_220px_auto_auto_auto]">
+              <div className="space-y-2">
+                <Label htmlFor="ogw-search">Search</Label>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="ogw-search"
+                    className="rounded-xl bg-background pl-9"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search tasks, assignees, notes, creator"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) => setStatusFilter(value as TaskStatus | "all")}
+                >
+                  <SelectTrigger className="rounded-xl bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    {STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Assignee</Label>
+                <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                  <SelectTrigger className="rounded-xl bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All assignees</SelectItem>
+                    {assigneeOptions.map((assignee) => (
+                      <SelectItem key={assignee} value={assignee}>
+                        {assignee}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                <div className="flex h-10 items-center gap-2 rounded-xl border bg-background px-3">
+                  <Switch checked={showCompleted} onCheckedChange={setShowCompleted} />
+                  <Label className="text-sm">Show done</Label>
+                </div>
+              </div>
+
+              <div className="flex items-end">
+                <div className="flex h-10 items-center gap-2 rounded-xl border bg-background px-3">
+                  <Switch checked={compactCards} onCheckedChange={setCompactCards} />
+                  <Label className="text-sm">Compact board</Label>
+                </div>
+              </div>
+
+              <div className="flex items-end justify-end">
+                <Button variant="outline" className="gap-1.5 rounded-xl" onClick={clearFilters}>
+                  <SlidersHorizontal className="size-4" />
+                  Reset filters
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="rounded-full bg-background/80">
+                {filteredTasks.length} matching tasks
+              </Badge>
+              <Badge variant="outline" className="rounded-full bg-background/80">
+                {viewMode === "board" ? "Board view active" : "Agenda view active"}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <TabsContent value="board" className="mt-0">
+          {isLoading ? (
+            <Card className="shadow-soft">
+              <CardContent className="py-16 text-center text-muted-foreground">
+                Loading OneGrasp Work tasks...
+              </CardContent>
+            </Card>
+          ) : filteredTasks.length ? (
+            <div className="grid gap-4 xl:grid-cols-4">
+              {STATUS_OPTIONS.map((option) => (
+                <TaskLane
+                  key={option.value}
+                  compactCards={compactCards}
+                  items={filteredTasks.filter((task) => task.status === option.value)}
+                  onDelete={setDeleteId}
+                  onEdit={startEditing}
+                  onStatusChange={updateTaskStatus}
+                  status={option.value}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card className="border-primary/10 bg-gradient-to-br from-primary/6 via-background to-info/6 shadow-soft">
+              <CardContent className="py-16 text-center">
+                <div className="mx-auto max-w-lg space-y-3">
+                  <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+                    <Sparkles className="size-6" />
+                  </div>
+                  <h3 className="text-lg font-semibold">No tasks match this setup</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Try resetting the workspace settings or create a fresh task to get the board
+                    moving again.
+                  </p>
+                  <div className="flex justify-center gap-2">
+                    <Button
+                      className="gap-1.5 rounded-xl"
+                      onClick={() => {
+                        clearFilters();
+                        setComposerOpen(true);
+                      }}
+                    >
+                      <Plus className="size-4" />
+                      Create task
+                    </Button>
+                    <Button variant="outline" className="rounded-xl" onClick={clearFilters}>
+                      Reset filters
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="list" className="mt-0">
+          {isLoading ? (
+            <Card className="shadow-soft">
+              <CardContent className="py-16 text-center text-muted-foreground">
+                Loading OneGrasp Work tasks...
+              </CardContent>
+            </Card>
+          ) : filteredTasks.length ? (
+            <div className="space-y-3">
+              {filteredTasks.map((item) => (
+                <TaskListItem
+                  key={item.id}
+                  item={item}
+                  onDelete={setDeleteId}
+                  onEdit={startEditing}
+                  onStatusChange={updateTaskStatus}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card className="border-primary/10 shadow-soft">
+              <CardContent className="py-16 text-center text-muted-foreground">
+                No tasks match the current filters yet.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
