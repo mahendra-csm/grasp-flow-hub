@@ -723,7 +723,7 @@ export function OneGraspWorkBoard() {
                 Shared with the CRM team
               </span>
               <span className="rounded-full border bg-background/80 px-3 py-1.5">
-                Status flow: To do -> In progress -> Review -> Done
+                Status flow: To do &rarr; In progress &rarr; Review &rarr; Done
               </span>
             </div>
           </div>
