@@ -60,6 +60,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { OneGraspWorkBoard } from "@/components/onegrasp-work-board";
 
 export const Route = createFileRoute("/_authenticated/work-tracker")({
   component: WorkTrackerPage,
@@ -509,15 +510,24 @@ function WorkTrackerPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Work Tracker</h1>
+          <h1 className="text-2xl font-semibold">OneGrasp Work</h1>
           <p className="text-sm text-muted-foreground">
-            Daily outreach and extraction tracking with an Excel-style log inside the CRM.
+            Jira-style team task tracking plus the daily outreach and extraction log inside the CRM.
           </p>
         </div>
         <Button variant="outline" onClick={exportWorkbook} className="gap-1.5">
           <Download className="size-4" />
-          Export Excel
+          Export Daily Log
         </Button>
+      </div>
+
+      <OneGraspWorkBoard />
+
+      <div className="space-y-1 pt-2">
+        <h2 className="text-lg font-semibold">Daily output log</h2>
+        <p className="text-sm text-muted-foreground">
+          Keep the team&apos;s outreach and extraction numbers in the CRM alongside the task board.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

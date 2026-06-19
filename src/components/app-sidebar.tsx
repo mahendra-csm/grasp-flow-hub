@@ -32,7 +32,7 @@ const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Conferences", url: "/conferences", icon: CalendarDays },
-  { title: "Work Tracker", url: "/work-tracker", icon: ClipboardList },
+  { title: "OneGrasp Work", url: "/work-tracker", icon: ClipboardList },
   { title: "Pipeline", url: "/pipeline", icon: KanbanSquare },
   { title: "Services", url: "/services", icon: Briefcase },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },

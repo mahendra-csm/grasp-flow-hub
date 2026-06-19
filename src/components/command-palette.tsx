@@ -46,10 +46,10 @@ const NAV_ITEMS = [
   { label: "Leads", to: "/leads", icon: Users, keywords: "contacts customers" },
   { label: "Conferences", to: "/conferences", icon: CalendarDays, keywords: "events" },
   {
-    label: "Work Tracker",
+    label: "OneGrasp Work",
     to: "/work-tracker",
     icon: ClipboardList,
-    keywords: "daily work excel tracker productivity",
+    keywords: "jira tasks task board daily work excel tracker productivity",
   },
   { label: "Pipeline", to: "/pipeline", icon: KanbanSquare, keywords: "kanban board stages" },
   { label: "Services", to: "/services", icon: Briefcase, keywords: "offerings products" },
