@@ -10,6 +10,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { parseLeadsFromText } from "@/lib/ai.functions";
 
+const MAX_IMPORT_FILE_BYTES = 4 * 1024 * 1024;
+const MAX_IMPORT_ROWS = 2000;
+const MAX_IMPORT_TEXT_LENGTH = 12000;
+
 const LEAD_FIELDS = [
   { value: "full_name", label: "Full Name *" },
   { value: "email", label: "Email" },
@@ -76,12 +80,21 @@ export function LeadImportDialog({ open, onOpenChange, onDone }: Props) {
   };
 
   const handleFile = async (file: File) => {
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      toast.error("File is too large. Please upload a file up to 4 MB.");
+      return;
+    }
+
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
 
     if (ext === "txt") {
       setFileMode("txt");
       const text = await file.text();
       if (!text.trim()) return toast.error("File is empty");
+      if (text.length > MAX_IMPORT_TEXT_LENGTH) {
+        toast.error("Text file is too large to process. Keep it under 12,000 characters.");
+        return;
+      }
       setAiLoading(true);
       try {
         const leads = await parseLeadsFromText({ data: { text } });
@@ -104,6 +117,10 @@ export function LeadImportDialog({ open, onOpenChange, onDone }: Props) {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows: Record<string, string>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
         if (!rows.length) return toast.error("No data found in the file");
+        if (rows.length > MAX_IMPORT_ROWS) {
+          toast.error("Spreadsheet contains too many rows. Limit is 2,000 rows per import.");
+          return;
+        }
         const hdrs = Object.keys(rows[0]);
         setHeaders(hdrs);
         setRawRows(rows);

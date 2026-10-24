@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.3-70b-versatile";
@@ -39,10 +40,12 @@ function extractJson<T>(raw: string): T {
   return JSON.parse(match[0]) as T;
 }
 
-type AskAIInput = { message: string };
+const askAISchema = z.object({
+  message: z.string().trim().min(1).max(4000),
+});
 
 export const askAI = createServerFn({ method: "POST" })
-  .inputValidator((d: AskAIInput) => d)
+  .inputValidator((input: unknown) => askAISchema.parse(input))
   .handler(async ({ data }) =>
     groqChat(
       `You are a helpful AI assistant for OneGrasp CRM — an internal lead management and sales tool.
@@ -52,19 +55,19 @@ Be concise, practical, and actionable. Use bullet points when listing multiple i
     ),
   );
 
-type SummarizeLeadInput = {
-  name: string;
-  stage: string;
-  priority: string;
-  source?: string | null;
-  service?: string | null;
-  notes?: string | null;
-  activities: string[];
-  followups: string[];
-};
+const summarizeLeadSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  stage: z.string().trim().min(1).max(50),
+  priority: z.string().trim().min(1).max(20),
+  source: z.string().trim().max(120).nullable().optional(),
+  service: z.string().trim().max(120).nullable().optional(),
+  notes: z.string().trim().max(4000).nullable().optional(),
+  activities: z.array(z.string().trim().max(400)).max(100),
+  followups: z.array(z.string().trim().max(400)).max(100),
+});
 
 export const summarizeLead = createServerFn({ method: "POST" })
-  .inputValidator((d: SummarizeLeadInput) => d)
+  .inputValidator((input: unknown) => summarizeLeadSchema.parse(input))
   .handler(async ({ data }) => {
     const ctx = `Lead Name: ${data.name}
 Pipeline Stage: ${data.stage}
@@ -91,15 +94,15 @@ Be concise and sales-focused.`,
     );
   });
 
-type DraftWhatsAppInput = {
-  name: string;
-  stage: string;
-  service?: string | null;
-  lastActivity?: string | null;
-};
+const draftWhatsAppSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  stage: z.string().trim().min(1).max(50),
+  service: z.string().trim().max(120).nullable().optional(),
+  lastActivity: z.string().trim().max(400).nullable().optional(),
+});
 
 export const draftWhatsAppMessage = createServerFn({ method: "POST" })
-  .inputValidator((d: DraftWhatsAppInput) => d)
+  .inputValidator((input: unknown) => draftWhatsAppSchema.parse(input))
   .handler(async ({ data }) => {
     const firstName = data.name.split(" ")[0];
     return groqChat(
@@ -113,17 +116,17 @@ Last contact: ${data.lastActivity ?? "none recorded"}`,
     );
   });
 
-type DraftEmailInput = {
-  name: string;
-  email: string;
-  stage: string;
-  service?: string | null;
-  notes?: string | null;
-  lastActivity?: string | null;
-};
+const draftEmailSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().toLowerCase().email().max(320),
+  stage: z.string().trim().min(1).max(50),
+  service: z.string().trim().max(120).nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+  lastActivity: z.string().trim().max(400).nullable().optional(),
+});
 
 export const draftFollowUpEmail = createServerFn({ method: "POST" })
-  .inputValidator((d: DraftEmailInput) => d)
+  .inputValidator((input: unknown) => draftEmailSchema.parse(input))
   .handler(async ({ data }) => {
     const ctx = `Lead name: ${data.name}
 Email: ${data.email}
@@ -154,10 +157,12 @@ Rules:
     return JSON.parse(match[0]) as { subject: string; body: string };
   });
 
-type ParseLeadsInput = { text: string };
+const parseLeadsSchema = z.object({
+  text: z.string().trim().min(1).max(12000),
+});
 
 export const parseLeadsFromText = createServerFn({ method: "POST" })
-  .inputValidator((d: ParseLeadsInput) => d)
+  .inputValidator((input: unknown) => parseLeadsSchema.parse(input))
   .handler(async ({ data }) => {
     const truncated = data.text.slice(0, 12000);
     const raw = await groqChat(
@@ -214,7 +219,29 @@ export type DashboardRecommendations = {
 };
 
 export const getDashboardRecommendations = createServerFn({ method: "POST" })
-  .inputValidator((d: DashboardRecommendationsInput) => d)
+  .inputValidator((input: unknown) =>
+    z.object({
+      totalLeads: z.number().int().min(0).max(1_000_000),
+      activeLeads: z.number().int().min(0).max(1_000_000),
+      converted: z.number().int().min(0).max(1_000_000),
+      pendingFollowups: z.number().int().min(0).max(1_000_000),
+      overdueFollowups: z.number().int().min(0).max(1_000_000),
+      serviceData: z.array(z.object({ name: z.string().max(120), value: z.number().int().min(0) })).max(50),
+      stageData: z.array(z.object({ stage: z.string().max(120), count: z.number().int().min(0) })).max(50),
+      topLeads: z.array(z.object({
+        id: z.string().uuid(),
+        name: z.string().max(120),
+        stage: z.string().max(50),
+        priority: z.string().max(20),
+        service: z.string().max(120).nullable(),
+        source: z.string().max(120).nullable(),
+        score: z.number().min(0).max(10),
+        updatedAt: z.string().max(100),
+        followUpDate: z.string().max(100).nullable(),
+        notes: z.string().max(2000).nullable(),
+      })).max(200),
+    }).parse(input),
+  )
   .handler(async ({ data }) => {
     const ctx = `CRM Snapshot\n\nKey metrics:\n- Total leads: ${data.totalLeads}\n- Active leads: ${data.activeLeads}\n- Converted leads: ${data.converted}\n- Pending follow-ups: ${data.pendingFollowups}\n- Overdue follow-ups: ${data.overdueFollowups}\n\nLeads by stage:\n${data.stageData.length ? data.stageData.map((s) => `- ${s.stage}: ${s.count}`).join("\n") : "- No stage data"}\n\nLeads by service:\n${data.serviceData.length ? data.serviceData.map((s) => `- ${s.name}: ${s.value}`).join("\n") : "- No service data"}\n\nTop lead signals (sorted by urgency/score):\n${data.topLeads.length ? data.topLeads.map((lead) => `- ${lead.name} | stage: ${lead.stage} | priority: ${lead.priority} | service: ${lead.service ?? "Unassigned"} | score: ${lead.score}/10 | follow-up: ${lead.followUpDate ?? "none"} | updated: ${lead.updatedAt}`).join("\n") : "- No leads available"}`;
 
@@ -251,17 +278,17 @@ Rules:
     };
   });
 
-type SuggestNextActionInput = {
-  name: string;
-  stage: string;
-  priority: string;
-  service?: string | null;
-  lastActivity?: string | null;
-  notes?: string | null;
-};
+const suggestNextActionSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  stage: z.string().trim().min(1).max(50),
+  priority: z.string().trim().min(1).max(20),
+  service: z.string().trim().max(120).nullable().optional(),
+  lastActivity: z.string().trim().max(400).nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+});
 
 export const suggestNextAction = createServerFn({ method: "POST" })
-  .inputValidator((d: SuggestNextActionInput) => d)
+  .inputValidator((input: unknown) => suggestNextActionSchema.parse(input))
   .handler(async ({ data }) => {
     const ctx = `Lead: ${data.name}
 Current Stage: ${data.stage}
