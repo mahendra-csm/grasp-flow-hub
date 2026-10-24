@@ -28,10 +28,11 @@ export default async function handler(
   try {
     srv = await getServer();
   } catch (err) {
-    console.error("[ssr] failed to load server:", err);
+    const correlationId = crypto.randomUUID();
+    console.error(`[ssr] correlation_id=${correlationId} failed to load server:`, err);
     res.statusCode = 500;
     res.setHeader("content-type", "text/plain");
-    res.end("Server failed to load: " + String(err));
+    res.end(`Server failed to load. correlation_id=${correlationId}`);
     return;
   }
 
@@ -63,10 +64,11 @@ export default async function handler(
   try {
     response = await srv.fetch(request, process.env, {});
   } catch (err) {
-    console.error("[ssr] fetch error:", err);
+    const correlationId = crypto.randomUUID();
+    console.error(`[ssr] correlation_id=${correlationId} fetch error:`, err);
     res.statusCode = 500;
     res.setHeader("content-type", "text/plain");
-    res.end("SSR fetch error: " + String(err));
+    res.end(`SSR request failed. correlation_id=${correlationId}`);
     return;
   }
 

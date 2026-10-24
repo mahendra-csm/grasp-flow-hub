@@ -13,4 +13,8 @@ export default defineConfig({
     }),
     react(),
   ],
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.ts"],
+  },
 });

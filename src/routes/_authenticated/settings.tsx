@@ -73,6 +73,7 @@ function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [generating, setGenerating] = useState(false);
   const [revoking, setRevoking] = useState(false);
+  const [newlyGeneratedKey, setNewlyGeneratedKey] = useState<string | null>(null);
 
   const themeOptions = [
     { value: "light", label: "Light", icon: Sun },
@@ -85,21 +86,23 @@ function SettingsPage() {
   const { data: keyData } = useQuery({
     queryKey: ["webhook-key", user?.id],
     queryFn: async () => {
-      if (!user?.id) return { key: null };
-      return getWebhookKey({ data: { userId: user.id } });
+      if (!user?.id) return { hasKey: false, keyPrefix: null };
+      return getWebhookKey({ data: {} });
     },
     enabled: !!user?.id,
   });
 
-  const apiKey = keyData?.key ?? null;
+  const hasApiKey = keyData?.hasKey ?? false;
+  const keyPrefix = keyData?.keyPrefix ?? null;
 
   const handleGenerate = async () => {
     if (!user?.id) return;
     setGenerating(true);
     try {
-      await generateWebhookKey({ data: { userId: user.id } });
+      const result = await generateWebhookKey({ data: {} });
+      setNewlyGeneratedKey(result.key);
       qc.invalidateQueries({ queryKey: ["webhook-key"] });
-      toast.success("API key generated");
+      toast.success("API key generated. Copy it now — it will not be shown again.");
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -111,7 +114,8 @@ function SettingsPage() {
     if (!user?.id) return;
     setRevoking(true);
     try {
-      await revokeWebhookKey({ data: { userId: user.id } });
+      await revokeWebhookKey({ data: {} });
+      setNewlyGeneratedKey(null);
       qc.invalidateQueries({ queryKey: ["webhook-key"] });
       toast.success("API key revoked");
     } catch (e: any) {
@@ -121,7 +125,7 @@ function SettingsPage() {
     }
   };
 
-  const websiteSnippet = apiKey
+  const websiteSnippet = newlyGeneratedKey
     ? `<!-- OneGrasp CRM — Lead Capture -->
 <script>
 async function submitToOneGraspCRM(formData) {
@@ -146,7 +150,7 @@ async function submitToOneGraspCRM(formData) {
 </script>`
     : "Generate an API key first.";
 
-  const curlSnippet = apiKey
+  const curlSnippet = newlyGeneratedKey
     ? `curl -X POST ${baseUrl}/api/webhook-leads \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer ${apiKey}" \\
@@ -231,12 +235,26 @@ async function submitToOneGraspCRM(formData) {
             <p className="text-xs text-muted-foreground">
               Used to authenticate all webhook calls. Keep it secret — treat it like a password.
             </p>
-            {apiKey ? (
+            {hasApiKey ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <code className="text-xs bg-muted px-3 py-1.5 rounded-md flex-1 break-all font-mono">{apiKey}</code>
-                  <CopyButton value={apiKey} />
+                  <code className="text-xs bg-muted px-3 py-1.5 rounded-md flex-1 break-all font-mono">
+                    {keyPrefix ? `${keyPrefix}…` : "Stored key (hidden)"}
+                  </code>
                 </div>
+                {newlyGeneratedKey && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-amber-600">
+                      This full key is shown once after generation. Copy and store it securely.
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <code className="text-xs bg-muted px-3 py-1.5 rounded-md flex-1 break-all font-mono">
+                        {newlyGeneratedKey}
+                      </code>
+                      <CopyButton value={newlyGeneratedKey} />
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="gap-1.5" onClick={handleGenerate} disabled={generating}>
                     <RefreshCw className="size-3.5" /> Rotate key
@@ -343,15 +361,15 @@ async function submitToOneGraspCRM(formData) {
               </div>
               <div className="space-y-1">
                 <span className="text-xs font-medium block">Verify Token</span>
-                {apiKey ? (
+                {newlyGeneratedKey ? (
                   <div className="flex gap-1">
                     <code className="text-xs bg-muted px-2 py-1 rounded-md font-mono flex-1 break-all">
-                      {apiKey.slice(0, 20)}…
+                      {newlyGeneratedKey.slice(0, 20)}…
                     </code>
-                    <CopyButton value={apiKey} size="icon" />
+                    <CopyButton value={newlyGeneratedKey} size="icon" />
                   </div>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Generate API key first</span>
+                  <span className="text-xs text-muted-foreground">Rotate key to generate a new verify token</span>
                 )}
               </div>
             </div>
@@ -393,7 +411,8 @@ async function submitToOneGraspCRM(formData) {
       <Card className="shadow-soft">
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Shield className="size-4 text-primary" /> Security</CardTitle></CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          Self-signup is disabled. Webhook API keys are stored encrypted in user metadata. Rotate keys regularly.
+          Signup requires invitation redemption. Webhook API keys are stored as non-reversible hashes
+          and full keys are only shown once on generation.
         </CardContent>
       </Card>
     </div>

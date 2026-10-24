@@ -1,9 +1,7 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { ensureAdmin } from "@/lib/admin-setup.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,14 +14,9 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
-  const setupAdmin = useServerFn(ensureAdmin);
-  const [email, setEmail] = useState("support@onegrasp.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    setupAdmin().catch(() => {});
-  }, [setupAdmin]);
 
   if (!loading && user) return <Navigate to="/dashboard" />;
 
@@ -75,7 +68,8 @@ function LoginPage() {
             {submitting ? <Loader2 className="size-4 animate-spin" /> : "Sign in"}
           </Button>
           <p className="text-xs text-muted-foreground text-center">
-            Default admin: <span className="font-mono">support@onegrasp.com</span>
+            If this is your first deployment, complete secure admin bootstrap as documented in
+            setup instructions.
           </p>
         </form>
       </div>

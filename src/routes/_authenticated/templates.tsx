@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -224,7 +224,7 @@ function TemplateFormSheet({
 
   // Reset form when editing target changes
   const { reset } = form;
-  useMemo(() => {
+  useEffect(() => {
     reset({
       title:    editing?.title    ?? "",
       activity: editing?.activity ?? "",

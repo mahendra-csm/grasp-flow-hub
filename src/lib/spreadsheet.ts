@@ -12,6 +12,10 @@ export type SpreadsheetPreviewWorkbook = {
   sheets: SpreadsheetPreviewSheet[];
 };
 
+export const MAX_SPREADSHEET_PREVIEW_BYTES = 6 * 1024 * 1024;
+export const MAX_SPREADSHEET_PREVIEW_ROWS_PER_SHEET = 5000;
+export const MAX_SPREADSHEET_PREVIEW_COLUMNS = 200;
+
 const SPREADSHEET_NAME_PATTERN = /\.(xlsx|xlsm|xlsb|xls|csv)$/i;
 const SPREADSHEET_MIME_TYPES = new Set([
   "application/vnd.ms-excel",
@@ -28,6 +32,10 @@ export function isSpreadsheetDocument(name: string, fileType: string | null) {
 }
 
 export function parseSpreadsheetPreview(buffer: ArrayBuffer): SpreadsheetPreviewWorkbook {
+  if (buffer.byteLength > MAX_SPREADSHEET_PREVIEW_BYTES) {
+    throw new Error("Spreadsheet is too large to preview safely.");
+  }
+
   const workbook = XLSX.read(buffer, { type: "array" });
 
   const sheets = workbook.SheetNames.map((sheetName) => {
@@ -38,7 +46,13 @@ export function parseSpreadsheetPreview(buffer: ArrayBuffer): SpreadsheetPreview
       raw: false,
     });
 
-    const rows = matrix.map((row) => row.map((cell) => (cell == null ? "" : String(cell))));
+    const rows = matrix
+      .slice(0, MAX_SPREADSHEET_PREVIEW_ROWS_PER_SHEET)
+      .map((row) =>
+        row
+          .slice(0, MAX_SPREADSHEET_PREVIEW_COLUMNS)
+          .map((cell) => (cell == null ? "" : String(cell))),
+      );
     const columnCount = rows.reduce((max, row) => Math.max(max, row.length), 0);
 
     return {
